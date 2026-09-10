@@ -100,6 +100,9 @@ claude mcp list
 
 The skill assumes the name `paper-search`, so its tools are `mcp__paper-search__*`. Another client, or a session where the server is not registered, falls back to the `paper-search` CLI, which the skill drives from Bash; the per-source `read_*_paper` tools and `download_with_fallback` exist only on the server
 
+> [!NOTE]
+> When a download falls back to a PDF on disk, the reading subagent opens it with Claude Code's `Read` tool, which renders PDFs through `pdftoppm` from poppler; without `poppler-utils` on `PATH` that rung fails and the subagent goes on to the CLI, which extracts the text itself. Install poppler if you want the PDF rung to work
+
 ## Keys
 
 Every source works without a key. Three free ones change how well: a [Semantic Scholar](https://www.semanticscholar.org/product/api) key takes you off the anonymous pool shared by everyone, a [CORE](https://core.ac.uk/services/api) key stops its frequent 500s, and an email for [Unpaywall](https://unpaywall.org/products/api) turns on the open-access step of the download fallback, which is otherwise skipped. The server reads them from an env file: the path in `PAPER_SEARCH_MCP_ENV_FILE`, else `~/.config/paper-search-mcp/.env`
