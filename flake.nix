@@ -41,6 +41,7 @@
             shfmt
             jq
             git
+            python3
             self.packages.${pkgs.stdenv.hostPlatform.system}.paper-search-mcp
           ];
         };

@@ -1,0 +1,78 @@
+name: bump-cascade
+
+# flake.lock ages on its own and nothing else moves it. This bumps weekly, verifies by
+# running the repository's real gate against the bump, and lands only on green — red
+# leaves the dated branch standing, with the bump on it, for a human to look at. How it
+# works: references/bump-cascade.md in https://github.com/rokokol/ci-skill
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+# Two runs would push the same branch from different bases
+concurrency: bump-cascade
+
+permissions:
+  contents: read
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    outputs:
+      branch: ${{ steps.push.outputs.branch }}
+      moved: ${{ steps.push.outputs.moved }}
+    steps:
+      # Full history: pushing from a shallow clone is refused
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: cachix/install-nix-action@v31
+
+      - id: push
+        run: |
+          nix flake update
+          lockfile=flake.lock
+          if git diff --quiet -- "$lockfile"; then
+            echo "everything is already current"
+            echo "moved=0" >>"$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          branch=bump/$(date -u +%Y-%m-%d)
+          git switch -c "$branch"
+          git commit -qam "take every dependency's current revision"
+          git push -f origin "$branch"
+          echo "branch=$branch" >>"$GITHUB_OUTPUT"
+          echo "moved=1" >>"$GITHUB_OUTPUT"
+
+  # The whole point of the temp branch: a reusable workflow checks out a ref, so the
+  # bump has to exist somewhere before the real checks can see it
+  verify:
+    needs: bump
+    if: needs.bump.outputs.moved == '1'
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.bump.outputs.branch }}
+
+  # Red leaves the branch alone, with the bump on it, so the failure can be looked at
+  land:
+    needs: [bump, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.bump.outputs.branch }}
+          fetch-depth: 0
+      - name: fast-forward the default branch onto the verified tree
+        env:
+          BRANCH: ${{ needs.bump.outputs.branch }}
+        run: |
+          git push origin HEAD:master
+          git push origin --delete "$BRANCH"

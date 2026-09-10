@@ -1,0 +1,8 @@
+# Files vendored from other repositories and kept byte-equal to their source by
+# vendor-sync.sh, one per line: LOCAL OWNER/REPO PATH COMMIT BLOB [manual]. Never edit a
+# copy in place: change it at its source and let the weekly cascade bring it back. How it
+# works: references/bump-cascade.md in https://github.com/rokokol/ci-skill
+vendor-sync.sh rokokol/ci-skill templates/vendor-sync.sh 42d8ed275977a210e5de961a677a476decfaedaa 09ccc3ffa63510a706d8243ae05fa5d0453cc44d
+check-pins.sh rokokol/ci-skill templates/check-pins.sh 42d8ed275977a210e5de961a677a476decfaedaa e259b35eb552b43fe92582c708f4d870e5f012d6
+check-skill.sh rokokol/ci-skill templates/check-skill.sh 42d8ed275977a210e5de961a677a476decfaedaa 98f086224ffc3e9717925589d48e6f3827fb0adb
+check-changelog.sh rokokol/versioning-skill check-changelog.sh dd26df392ddedde32556fb8d0fb39b96826dbeb4 9548140d3c9d9f5ac4505bac4c53c30c6ba09a59

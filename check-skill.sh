@@ -13,18 +13,25 @@
 # Exit 1 with `check-skill: <what>` on the first finding, 2 on a usage error.
 #
 # Nothing here reaches the network. Needs bash 3.2 and POSIX tools only, so it runs on a
-# macOS runner unchanged. Copy it verbatim — it has no repo-specific part — and call it
-# from the repository's own gate.
+# macOS runner unchanged. It has no repo-specific part: another repository takes it through
+# the vendoring cascade (references/bump-cascade.md in https://github.com/rokokol/ci-skill),
+# never edits its copy in place, and calls it from its own gate.
 set -euo pipefail
 
-usage() { sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+# The whole header, however long it grows: up to the first line that is not a comment
+usage() { sed -n '2,/^[^#]/p' "${BASH_SOURCE[0]}" | sed '$d; s/^# \{0,1\}//'; }
 
 self=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/$(basename -- "${BASH_SOURCE[0]}")
 want_name=""
 while (($#)); do
   case "$1" in
     -n)
-      want_name="${2:?-n needs a name}"
+      # Not ${2:?}: that exits 1 with bash's own message, and a usage error is exit 2
+      (($# >= 2)) || {
+        echo "check-skill: -n needs a name" >&2
+        exit 2
+      }
+      want_name="$2"
       shift 2
       ;;
     -h | --help)
@@ -245,6 +252,9 @@ nested() { # nested COPY [ARGS...] -> this script on the copy, falsification ski
   CHECK_SKILL_NESTED=1 "$self" "$@" "$c"
 }
 
+planted=0
+# The count lives here rather than beside each call, so a new planted case cannot be left
+# out of the number the summary line reports
 expect_red() { # expect_red COPY FRAGMENT WHAT [ARGS...]
   local c="$1" want="$2" what="$3" out
   shift 3
@@ -255,9 +265,8 @@ expect_red() { # expect_red COPY FRAGMENT WHAT [ARGS...]
     *"$want"*) ;;
     *) fail "a copy with $what was rejected for the wrong reason: $out" ;;
   esac
+  planted=$((planted + 1))
 }
-
-planted=0
 
 c=$(copy clean)
 nested "$c" "${nargs[@]+"${nargs[@]}"}" >/dev/null 2>&1 ||
@@ -272,46 +281,36 @@ nested "$c" "${nargs[@]+"${nargs[@]}"}" >/dev/null 2>&1 ||
 c=$(copy no-frontmatter)
 printf 'no frontmatter here\n' >"$c/SKILL.md"
 expect_red "$c" "does not open with a frontmatter" "no frontmatter" "${nargs[@]+"${nargs[@]}"}"
-planted=$((planted + 1))
 
 c=$(copy unclosed)
 sed '1!{/^---$/d;}' SKILL.md >"$c/SKILL.md"
 expect_red "$c" "never closed" "an unclosed frontmatter" "${nargs[@]+"${nargs[@]}"}"
-planted=$((planted + 1))
 
 c=$(copy no-license)
 grep -v '^license:' SKILL.md >"$c/SKILL.md"
 expect_red "$c" "has no license" "no license key" "${nargs[@]+"${nargs[@]}"}"
-planted=$((planted + 1))
 
 c=$(copy bad-name)
 sed 's/^name:.*/name: Not_Valid/' SKILL.md >"$c/SKILL.md"
 expect_red "$c" "not a valid skill name" "an invalid name" "${nargs[@]+"${nargs[@]}"}"
-planted=$((planted + 1))
 
 c=$(copy other-name)
 expect_red "$c" "call it 'some-other-name'" "a name the symlink disagrees with" -n some-other-name
-planted=$((planted + 1))
 
 c=$(copy long-description)
 sed "s/^description:.*/description: $(printf '%1100s' '' | tr ' ' x)/" SKILL.md >"$c/SKILL.md"
 expect_red "$c" "characters long" "an oversized description" "${nargs[@]+"${nargs[@]}"}"
-planted=$((planted + 1))
 
 c=$(copy orphan)
 mkdir -p "$c/references"
 printf '# nothing points here\n' >"$c/references/nothing-points-here.md"
 expect_red "$c" "reaches it" "a reference nothing links to" "${nargs[@]+"${nargs[@]}"}"
-planted=$((planted + 1))
 
 c=$(copy dead-link)
 printf '\n[gone](references/nothing-here.md)\n' >>"$c/SKILL.md"
 expect_red "$c" "does not exist" "a dead link" "${nargs[@]+"${nargs[@]}"}"
-planted=$((planted + 1))
 
 c=$(copy dead-anchor)
 printf '\n[gone](#no-such-heading-anywhere)\n' >>"$c/SKILL.md"
 expect_red "$c" "no heading has that anchor" "a dead anchor" "${nargs[@]+"${nargs[@]}"}"
-planted=$((planted + 1))
-
 echo "check-skill: SKILL.md loads as '$name', $nrefs references reachable, $nlinks links resolve, $planted planted defects caught"

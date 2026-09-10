@@ -1,0 +1,36 @@
+name: ci
+
+# The gate: lint, the vendored checkers, the documents tied to the packaged server, and the
+# flake's own checks. The server comes from the flake's package and the package's source is
+# a hash-pinned fetch, so nothing here depends on a mirror's mood, and pull requests run it
+# too
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+  # Automation (the bump cascade, vendor-sync) verifies branches by calling this workflow
+  # against a ref — the real checks, never a copy of their commands that drifts apart
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: cachix/install-nix-action@v31
+      - name: check.sh (the gate, self-tested against planted defects)
+        run: nix develop --no-write-lock-file -c ./check.sh
+      - name: the package builds and the server starts
+        run: nix flake check --no-write-lock-file --print-build-logs
