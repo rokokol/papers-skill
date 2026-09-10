@@ -1,0 +1,20 @@
+[project]
+name = "papers-corpus"
+version = "0"
+description = "A locked environment for PaperQA2, the corpus mode of the papers skill"
+requires-python = ">=3.13,<3.14"
+# pypdf[image] brings pillow: paper-qa's PDF reader extracts images even with multimodal
+# parsing off, and pypdf raises without pillow, which paper-qa does not depend on itself.
+# fonttools lets pypdf read the encoding of CFF fonts, which some journal PDFs use.
+# fhlmi is pinned to what paper-qa's own lock names at this release: its metadata allows
+# 1.x, but 1.x dropped LiteLLMModel.get_router and the agent crashes before its first call
+dependencies = [
+  "paper-qa==2026.8.12",
+  "pypdf[image]",
+  "fonttools",
+  "fhlmi==0.45.0",
+  "fhaviary==0.34.0",
+]
+
+[tool.uv]
+package = false

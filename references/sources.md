@@ -60,7 +60,7 @@ The services' own rules still apply behind the server: arXiv asks for one reques
 
 - **arXiv hangs on multi-word queries without quotes** (upstream #101): quote a phrase, or search Semantic Scholar first and read from arXiv by id
 - **Google Scholar is a scraper** with roughly ten queries per session before it blocks (#74); it is never the first source and never the only one
-- **`download_with_fallback` reaches Sci-Hub by default** (#103); say so when reporting where a PDF came from
+- **`download_with_fallback` reaches Sci-Hub by default** (#103); say so when reporting where a PDF came from. In practice that rung yields nothing: the mirror the server assumes, sci-hub.se, no longer resolves, and the mirrors that answer put a captcha in front of every DOI page, which the scraper cannot pass (measured 2026-09-10). What actually finds a paywalled paper's copy is the open-repository rung, and it matches on `title`, so pass the title, never an empty string
 - **The server crashes at startup under mcp SDK 2.x** (#107) when installed from PyPI without a pin; the packaged binary in this repository is built against the 1.x SDK and does not
 - **A `read_*` result can be an abstract**: PubMed without PMC access, Crossref for a paywalled journal, SSRN. The digest's last field exists to say so
 - **The default `save_path` is `./downloads`**, relative to the process's working directory; always pass one

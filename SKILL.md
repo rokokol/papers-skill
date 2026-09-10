@@ -27,7 +27,7 @@ Say which mode you are in. A request usually chains them: `search` → `read` �
 
 **note** — after a digest or a review, ask once whether to save it; never write into a vault unasked. On yes, read `$OBSIDIAN_VAULT_PATH/.claude/papers/profile.yml` ([references/profile.md](references/profile.md)): it names the vault's style skill, the preset and the folder, and the note is written through that skill in its language, never in a shape invented here. Without a profile, ask for a path and write plain Markdown with the digest under a frontmatter of `title`, `doi`, `arxiv`, `url`, `authors`, `year`, `venue`, `created`. Keep the PDF only when the profile names an attachments folder.
 
-A folder of papers with questions across all of them at once is retrieval over a corpus, which no mode here does; [docs/paperqa.md](docs/paperqa.md) records when PaperQA2 would earn its setup. Until then, `review` over a handful of digests is the answer.
+**corpus** — a question across every paper in a folder at once: "what evidence do my papers hold for X", "which of them measured Y". That is retrieval, not reading, and PaperQA2 does it with a local embedding model: `pqa-evidence -s <preset> -k 8 "<query>"` returns only the retrieved passages, each under its paper and chunk, and the master writes the synthesis itself, because a local model retrieves as well as any and reasons less well than the master. It runs in the master, and `-k` is the bound on what enters the context; a query is a few keywords or a short phrase, not the whole question. `pqa ask`, where PaperQA2's own model writes the answer, needs a model that returns tool calls and is not part of this mode with a local one. [references/paperqa.md](references/paperqa.md) has the preset, the folder, how to add papers and when the corpus is too small for this to beat `review`. When `pqa` is not on PATH, say so and fall back to `review`.
 
 ## The reading subagent
 
@@ -64,14 +64,14 @@ One paper, one subagent, one digest. The contract is what makes the mode cheap, 
 | What to tell the reading subagent, word for word | [references/reader.md](references/reader.md) |
 | The digest's fields and bounds | [references/digest-template.md](references/digest-template.md) |
 | The profile a vault owner writes so notes land in their style and folder | [references/profile.md](references/profile.md) |
+| The corpus mode: PaperQA2's preset, folder, commands and limits | [references/paperqa.md](references/paperqa.md) |
 
 ## Layout
 
 ```
 SKILL.md              this file — setup, modes, the subagent contract, the never list
-references/           sources, reader prompt, digest template, profile schema
-docs/                 design notes for people, such as when PaperQA2 would earn its setup
-nix/                  the paper-search-mcp package and its Home Manager module
+references/           sources, reader prompt, digest template, profile schema, the corpus mode
+nix/                  the paper-search-mcp package, the locked PaperQA2 environment, the Home Manager module
 flake.nix             packages, the module, the dev shell and checks
 check.sh              this repo's own gate
 ```

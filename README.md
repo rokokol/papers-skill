@@ -23,6 +23,7 @@ The sources come from [paper-search-mcp](https://github.com/openags/paper-search
 - [Install the sources](#install-the-sources)
 - [Register the server](#register-the-server)
 - [Keys](#keys)
+- [A corpus with PaperQA2](#a-corpus-with-paperqa2)
 - [Notes in a vault](#notes-in-a-vault)
 - [Checks](#checks)
 - [Layout](#layout)
@@ -115,6 +116,21 @@ PAPER_SEARCH_MCP_UNPAYWALL_EMAIL=you@example.com
 
 Keep that file out of the repository and out of the chat: the skill never asks for a key and never puts one on a command line. [references/sources.md](references/sources.md) lists the rest of the variables and what each source does without them
 
+## A corpus with PaperQA2
+
+One paper is read by a subagent; a question across a whole folder of papers is retrieval, and [PaperQA2](https://github.com/Future-House/paper-qa) does it. It is not in nixpkgs and pins an older `litellm`, so the flake carries it as a locked environment, `nix/paperqa/uv.lock` resolved by uv and built by uv2nix from wheels, exposed as `packages.paper-qa` with the `pqa` command. The module's `corpus` block installs it and writes the settings preset for local models, so nothing leaves the machine:
+
+```nix
+programs.papers.corpus = {
+  enable = true;
+  directory = "/home/me/.cache/papers";   # the folder the skill downloads into
+  llm = "ollama/qwen3.5:9b";              # the defaults; both pulled with ollama pull
+  embedding = "ollama/bge-m3";
+};
+```
+
+Then `pqa -s papers index <folder>` once, and `pqa-evidence -s papers "<query>"` for every question: it returns the passages PaperQA2 retrieved, untouched, and the agent reasons over them, since a local model retrieves well and reasons less well. Which models to pick and why, the commands, and why `pqa ask` needs a model that returns tool calls are in [references/paperqa.md](references/paperqa.md)
+
 ## Notes in a vault
 
 The `note` mode files a digest into an Obsidian vault, but only when you say so, and never in a shape invented here: your vault has its own style, and the skill defers to it. Tell it how through one profile in the vault:
@@ -144,9 +160,8 @@ nix flake check
 
 ```
 SKILL.md              what the agent loads: modes, the reading subagent's contract, the never list
-references/           sources by area, the reader prompt, the digest template, the profile
-docs/                 when a corpus would need PaperQA2 instead, and how it would run locally
-nix/                  package.nix for paper-search-mcp, home-module.nix for Home Manager
+references/           sources by area, the reader prompt, the digest template, the profile, the corpus mode
+nix/                  package.nix for paper-search-mcp, paperqa/ with PaperQA2's lock, home-module.nix for Home Manager
 flake.nix             packages, the module, the overlay, the dev shell and the checks
 tests/mcp-tools.py    asks a stdio MCP server what tools it has; check.sh compares the documents to it
 check.sh              the gate, self-tested against planted defects
