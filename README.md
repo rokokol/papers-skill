@@ -141,7 +141,8 @@ nix flake check
 
 ```
 SKILL.md              what the agent loads: modes, the reading subagent's contract, the never list
-references/           sources by area, the reader prompt, the digest template, the profile, paperqa
+references/           sources by area, the reader prompt, the digest template, the profile
+docs/                 when a corpus would need PaperQA2 instead, and how it would run locally
 nix/                  package.nix for paper-search-mcp, home-module.nix for Home Manager
 flake.nix             packages, the module, the overlay, the dev shell and the checks
 tests/mcp-tools.py    asks a stdio MCP server what tools it has; check.sh compares the documents to it

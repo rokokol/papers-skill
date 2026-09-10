@@ -23,7 +23,7 @@ cd "$HERE"
 # One source of truth for what gets linted. A second copy of this list drifts, and a
 # drifted list lies about what was checked.
 scripts=(check.sh check-skill.sh check-pins.sh check-changelog.sh vendor-sync.sh)
-docs=(SKILL.md references/sources.md references/reader.md references/digest-template.md references/profile.md references/paperqa.md)
+docs=(SKILL.md references/sources.md references/reader.md references/digest-template.md references/profile.md)
 skill_name=papers
 
 fail() {

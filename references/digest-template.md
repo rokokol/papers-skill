@@ -14,14 +14,14 @@ The shape every reading subagent returns and every note is built from. Field nam
 **Data** — datasets, subjects or corpora, with sizes; the baselines or controls
 **Results** — the main findings with the numbers as reported (metric, value, comparison); three to five lines
 **Limitations** — what the authors admit, then what they do not: scope, data, missing baselines, unreported variance
-**For the question** — what this paper contributes to QUESTION, and what it cannot settle
+**For the question** — what this paper contributes to the question given in the prompt, and what it cannot settle
 **Worth following** — up to five references the paper leans on, as identifiers or exact titles
 **Read** — one of: full text; abstract only; extraction truncated after section N; and the source used
 ```
 
 ## Bounds and checks the master applies
 
-- Eleven fields, in this order, every one present
+- Every field of the template, in its order, none omitted
 - Under 450 words in total; a digest that runs over was written by summarising the text instead of answering the fields
 - **Results** carries numbers or the words "no numbers reported"; a results field made of adjectives is a failed read
 - **Read** names what was actually read; a digest whose last field is missing is treated as abstract-only

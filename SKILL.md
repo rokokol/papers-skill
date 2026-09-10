@@ -1,6 +1,6 @@
 ---
 name: papers
-description: "Find, read and compare scientific papers without spending the main conversation's context on them: a topic becomes a ranked shortlist with identifiers, an identifier becomes a bounded digest written by a reading subagent, several papers become a comparison, and a digest becomes a note in the user's vault only when they say so. Sources come from the paper-search MCP server or its CLI (arXiv, PubMed, Semantic Scholar, OpenAlex, Crossref and more). Use when the user asks to find papers on a topic, look up a DOI or arXiv id, summarise or critique an article, compare papers, or write a literature note. Triggers: papers, paper, article, preprint, arXiv, DOI, PubMed, literature, literature review, related work, what does the research say, статья, статьи, научные статьи, найди статьи, препринт, обзор литературы, что говорят исследования, разбери статью, конспект статьи, сравни статьи"
+description: "Find, read and compare scientific papers without spending the conversation's context on them: a shortlist of identifiers for a topic, a bounded digest of one paper by a reading subagent, a comparison of several, and a note in the user's vault only when they say so. Sources: the paper-search MCP server or its CLI (arXiv, PubMed, Semantic Scholar, OpenAlex, Crossref and more). Use when the user asks to find papers on a topic, look up a DOI or arXiv id, summarise or critique a scientific article, compare papers, or write a literature note. Not for a web page, a blog post or a news article, which is a plain fetch. Triggers: papers, paper, preprint, arXiv, DOI, PubMed, literature review, systematic review, meta-analysis, related work, citations, who cites this, state of the art, what does the research say, научные статьи, найди статьи, препринт, обзор литературы, мета-анализ, литература по теме, найди источники, есть ли работы про, что говорят исследования, разбери статью, конспект научной статьи, сравни статьи"
 license: MIT
 ---
 
@@ -10,7 +10,7 @@ Scientific papers are long and PDFs are worse: the text of one paper is a large 
 
 ## Setup
 
-- **Sources** come from [paper-search-mcp](https://github.com/openags/paper-search-mcp) in one of two forms. As an MCP server registered under a name (assumed `paper-search` below) its tools are `mcp__paper-search__*`; they are deferred, so run `ToolSearch` with `+paper-search` before the first call, in the subagent as well as in the master. As a CLI, `paper-search search|download|read|sources` prints JSON or text. Prefer the MCP where it is registered: `download_with_fallback` and the per-source `read_*_paper` tools exist only there. Check availability once per session: `ToolSearch` finds the tools, or `command -v paper-search` finds the binary; neither means stop and point at [README.md](README.md)
+- **Sources** come from [paper-search-mcp](https://github.com/openags/paper-search-mcp) in one of two forms. As an MCP server registered under a name (assumed `paper-search` below) its tools are `mcp__paper-search__*`; they are deferred, so before the first call run `ToolSearch` with `select:` and the exact names about to be called, in the subagent as well as in the master: the server has 57 tools and a keyword query returns only the first few, so the one needed is often not among them. As a CLI, `paper-search search|download|read|sources` prints JSON or text. Prefer the MCP where it is registered: `download_with_fallback` and the per-source `read_*_paper` tools exist only there. Check availability once per session: `ToolSearch` finds the tools, or `command -v paper-search` finds the binary; neither means stop and point at [README.md](README.md)
 - **Keys** are optional and never pass through the conversation: the server reads an env file named by `PAPER_SEARCH_MCP_ENV_FILE` or `~/.config/paper-search-mcp/.env`. Without them Semantic Scholar shares an anonymous rate limit, CORE fails often and Unpaywall is skipped, which is the legal open-access fallback; [references/sources.md](references/sources.md#keys-and-limits) names the variables
 - **Downloads** go to one place, `~/.cache/papers/`, passed as `save_path` on every call; the default `./downloads` litters whatever directory the session happens to be in
 - **Subagents** always get an explicit `model`, `sonnet` unless the user names another, and are told not to spawn subagents of their own. Reading is delegated; judgement is not
@@ -21,13 +21,13 @@ Say which mode you are in. A request usually chains them: `search` → `read` �
 
 **search** — a topic, optional constraints (years, field, open access), and the user's actual question. Pick the sources by area from [references/sources.md](references/sources.md#sources-by-area); default to `search_papers` with two or three sources and `max_results_per_source` of 5. When the sweep is that narrow, run it in the master. When it is wider, or the user wants exhaustiveness, delegate to a scout subagent that runs the searches and returns at most ten candidates as `identifier, source, title, year, venue, one line why` and nothing else; the master never receives abstracts in bulk. Present the shortlist as a table with identifiers the next mode can act on, and say which sources answered and which returned nothing. Nothing found is a result, not a failure.
 
-**read** — one identifier: an arXiv id, a DOI, a PMID, a URL, or a title from a previous shortlist. Resolve the source and id with the table in [references/sources.md](references/sources.md#identifiers), then spawn one reading subagent with the prompt in [references/reader.md](references/reader.md): it obtains the text, reads it, and returns a digest in the shape of [references/digest-template.md](references/digest-template.md), at most 450 words, in the language of the conversation. Show the digest as received, add your own reading of what it means for the user's question, then offer `note`. If the subagent reports that only the abstract was reachable, say so before anything else.
+**read** — one identifier: an arXiv id, a DOI, a PMID, a URL, a title from a previous shortlist, or a PDF the user already has. Resolve the source and id with the table in [references/sources.md](references/sources.md#identifiers), a local file needs no resolution, then spawn one reading subagent with the prompt in [references/reader.md](references/reader.md): it obtains the text, reads it, and returns a digest in the shape of [references/digest-template.md](references/digest-template.md), within the template's bound, in the language of the conversation. Show the digest as received, add your own reading of what it means for the user's question, then offer `note`. If the subagent reports that only the abstract was reachable, or that nothing was, say so before anything else.
 
 **review** — several identifiers or a shortlist. One reading subagent per paper, one at a time; up to three in parallel only when the user asks for speed, since the sources rate-limit and the subagent cap is small. Then synthesise in the master from the digests alone: a comparison table on the axes the user's question implies, agreements, contradictions, and the gaps, each claim tied to an identifier. Do not re-read a paper to settle a contradiction; spawn a reading subagent with the specific question instead.
 
 **note** — after a digest or a review, ask once whether to save it; never write into a vault unasked. On yes, read `$OBSIDIAN_VAULT_PATH/.claude/papers/profile.yml` ([references/profile.md](references/profile.md)): it names the vault's style skill, the preset and the folder, and the note is written through that skill in its language, never in a shape invented here. Without a profile, ask for a path and write plain Markdown with the digest under a frontmatter of `title`, `doi`, `arxiv`, `url`, `authors`, `year`, `venue`, `created`. Keep the PDF only when the profile names an attachments folder.
 
-**corpus** — a folder of papers and questions across all of them at once is PaperQA2's job, not a subagent's; [references/paperqa.md](references/paperqa.md) says when it earns its setup. Not implemented in this version.
+A folder of papers with questions across all of them at once is retrieval over a corpus, which no mode here does; [docs/paperqa.md](docs/paperqa.md) records when PaperQA2 would earn its setup. Until then, `review` over a handful of digests is the answer.
 
 ## The reading subagent
 
@@ -43,10 +43,8 @@ One paper, one subagent, one digest. The contract is what makes the mode cheap, 
 
 - Read a PDF, call `read_*_paper`, `download_*`, or `paper-search read` in the master; that is the whole point of the reading subagent
 - Paste abstracts or full search results into the conversation; a shortlist is identifiers plus one line each
-- Spawn a subagent without an explicit `model`, or one allowed to spawn its own
-- Write into a vault or any user folder without a yes for that note
 - Put an API key into a prompt, a command line, or a note
-- Present a digest as the paper's claim without saying what the subagent actually read
+- Present a digest as the paper's claim without saying what the subagent actually read, or turn a failure line into a digest from memory
 - Go to Google Scholar first: it is a scraper with a session limit, and every source it knows is covered elsewhere ([sources.md](references/sources.md#known-pitfalls))
 - Invent a reference; every identifier in a report came from a tool result
 
@@ -66,13 +64,13 @@ One paper, one subagent, one digest. The contract is what makes the mode cheap, 
 | What to tell the reading subagent, word for word | [references/reader.md](references/reader.md) |
 | The digest's fields and bounds | [references/digest-template.md](references/digest-template.md) |
 | The profile a vault owner writes so notes land in their style and folder | [references/profile.md](references/profile.md) |
-| When a corpus needs PaperQA2 instead, and how it would run locally | [references/paperqa.md](references/paperqa.md) |
 
 ## Layout
 
 ```
 SKILL.md              this file — setup, modes, the subagent contract, the never list
-references/           sources, reader prompt, digest template, profile schema, paperqa
+references/           sources, reader prompt, digest template, profile schema
+docs/                 design notes for people, such as when PaperQA2 would earn its setup
 nix/                  the paper-search-mcp package and its Home Manager module
 flake.nix             packages, the module, the dev shell and checks
 check.sh              this repo's own gate

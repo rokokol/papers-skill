@@ -4,7 +4,7 @@ What paper-search-mcp can reach, which of it to use for which question, and wher
 
 ## Sources by area
 
-`search_papers` takes a `sources` list and a `max_results_per_source`. Start with the primary pair for the area, add one secondary only when the primary returned nothing useful; never fan out across every source because it is available.
+`search_papers` takes `sources` as one comma-separated string (`"arxiv,semantic"`, or `"all"`) and a `max_results_per_source`. Start with the primary pair for the area, add one secondary only when the primary returned nothing useful; never fan out across every source because it is available.
 
 | Area | Primary | Secondary | Notes |
 |---|---|---|---|
