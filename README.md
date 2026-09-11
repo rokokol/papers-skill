@@ -155,7 +155,7 @@ nix develop -c ./check.sh
 nix flake check
 ```
 
-`check.sh` is the gate CI runs: the scripts lint, the workflows are valid and pinned, the vendored checkers still match their lock, `SKILL.md` loads and every reference and link resolves, the changelog obeys its rules, and every MCP tool and source the documents name is one the packaged server actually advertises. Each check is proven able to fail on a planted defect during the same run. `nix flake check` builds the package and starts the server once, offline
+`check.sh` is the gate CI runs: the scripts lint, the workflows are valid and pinned, the vendored checkers still match their lock, `SKILL.md` loads and every reference and link resolves, the changelog obeys its rules, and every MCP tool, argument and source the documents name is one the packaged server actually advertises. Each check is proven able to fail on a planted defect during the same run. `nix flake check` builds the package and starts the server once, offline
 
 ## Layout
 
@@ -164,7 +164,8 @@ SKILL.md              what the agent loads: modes, the reading subagent's contra
 references/           sources by area, the reader prompt, the digest template, the profile, the corpus mode
 nix/                  package.nix for paper-search-mcp, paperqa/ with PaperQA2's lock, home-module.nix for Home Manager
 flake.nix             packages, the module, the overlay, the dev shell and the checks
-tests/mcp-tools.py    asks a stdio MCP server what tools it has; check.sh compares the documents to it
+tests/mcp-tools.py    asks a stdio MCP server what tools it has and what arguments each takes
+tests/doc-args.py     finds the arguments the documents give each tool; check.sh holds them to the server's
 check.sh              the gate, self-tested against planted defects
 check-*.sh            vendored checkers, kept byte-equal to their source by vendor-sync.sh
 workarounds.md        what exists only because something upstream is broken, and how to tell when it can go

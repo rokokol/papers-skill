@@ -4,7 +4,7 @@ What paper-search-mcp can reach, which of it to use for which question, and wher
 
 ## Sources by area
 
-`search_papers` takes `sources` as one comma-separated string (`"arxiv,semantic"`, or `"all"`) and a `max_results_per_source`. Start with the primary pair for the area, add one secondary only when the primary returned nothing useful; never fan out across every source because it is available
+`search_papers(query, sources, max_results_per_source)` takes `sources` as one comma-separated string (`"arxiv,semantic"`, or `"all"`). Start with the primary pair for the area, add one secondary only when the primary returned nothing useful; never fan out across every source because it is available
 
 | Area | Primary | Secondary | Notes |
 |---|---|---|---|
@@ -15,7 +15,7 @@ What paper-search-mcp can reach, which of it to use for which question, and wher
 | Psychology, cognitive science | `openalex`, `semantic` | `pubmed` | No free index owns the field; OpenAlex has the widest coverage of its journals, PubMed the clinical side |
 | Anything else | `openalex`, `semantic` | `crossref` | OpenAlex is the broadest open index; Crossref resolves a DOI to its record |
 
-Per-source tools (`search_arxiv`, `search_pubmed`, `search_semantic`, …) exist for when one source needs its own parameters: `search_arxiv` sorts by relevance or date, `search_semantic` and `search_papers` filter by `year`, `search_crossref` takes a filter string
+Per-source tools (`search_arxiv`, `search_pubmed`, `search_semantic`, …) exist for when one source needs its own parameters: `search_arxiv(…, sort_by)` sorts by relevance or date, `search_semantic(…, year)` filters by year as `search_papers(…, year)` does, `search_crossref(…, filter)` takes a filter string
 
 ## Identifiers
 

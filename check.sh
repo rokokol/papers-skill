@@ -45,7 +45,7 @@ echo "== the scripts parse and lint"
 for s in "${scripts[@]}"; do bash -n "$s"; done
 shellcheck "${scripts[@]}"
 shfmt -d -i 2 -ci "${scripts[@]}"
-python3 -m py_compile tests/mcp-tools.py
+python3 -m py_compile tests/mcp-tools.py tests/doc-args.py
 
 echo "== the workflows are valid, and their tools come from the lock rather than a registry"
 [[ -d .github/workflows ]] || fail ".github/workflows is missing — nothing gates this repository"
@@ -103,6 +103,28 @@ printf 'call mcp__paper-search__read_everything_paper first\n' >"$work/bad-tool.
 named_tools "$work/bad-tool.md" >"$work/bad-named.txt"
 [[ -n "$(comm -23 "$work/bad-named.txt" "$work/tools.txt")" ]] ||
   fail "a planted unknown tool name passed the tool check — it compares nothing"
+
+echo "== every argument the documents give a tool is one the tool takes"
+# A renamed argument leaves the tool's name alone, so the check above stays green while
+# every call the documents prescribe starts failing; the argument names are held against
+# each tool's inputSchema for the same reason the names are held against the tool list
+python3 tests/mcp-tools.py --args paper-search-mcp >"$work/args.txt"
+[[ -s "$work/args.txt" ]] || fail "the server advertised no tool arguments"
+python3 tests/doc-args.py "$work/args.txt" "${docs[@]}" ||
+  fail "the documents give tools arguments the server does not take, listed above"
+# And the check is awake in each shape a document gives arguments in: call notation, a
+# tool name with a placeholder, and the reader prompt. Exit 1 is the only catch: 2 means
+# the parser found no claim at all, which would pass a broken parser off as a catch
+# shellcheck disable=SC2016 # the backticks are the planted document's markdown
+printf '`search_papers(query, limit)`\n' >"$work/bad-call.md"
+# shellcheck disable=SC2016 # the backticks are the planted document's markdown
+printf '`read_<source>_paper(paper_id, page)`\n' >"$work/bad-placeholder.md"
+printf 'Call mcp__paper-search__download_with_fallback with sauce SOURCE\n' >"$work/bad-prompt.md"
+for bad in bad-call bad-placeholder bad-prompt; do
+  status=0
+  python3 tests/doc-args.py "$work/args.txt" "$work/$bad.md" >/dev/null || status=$?
+  ((status == 1)) || fail "a planted unknown argument in $bad.md was not caught (exit $status) — the check compares nothing"
+done
 
 echo "== every source the documents route to is one the CLI lists, and has a read tool"
 paper-search sources 2>/dev/null | jq -r '.sources[]' | sort -u >"$work/sources.txt"

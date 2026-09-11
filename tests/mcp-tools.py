@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Print the tool names a stdio MCP server advertises, one per line.
 
-Usage: mcp-tools.py SERVER_COMMAND [ARG...]
+Usage: mcp-tools.py [--args] SERVER_COMMAND [ARG...]
 
 Speaks the JSON-RPC handshake the MCP protocol requires (initialize, the initialized
 notification, tools/list) over the server's stdin and stdout, and prints the names in the
-order the server lists them. The server's log lines on stderr are dropped; a stdout line
+order the server lists them. With --args it prints one "tool argument" line per argument
+in each tool's inputSchema instead, so a caller can check argument names too. The server's log lines on stderr are dropped; a stdout line
 that is not JSON is skipped, since some servers print a banner before speaking the protocol.
 Exit 1 when the server never answers tools/list, so a caller reading an empty list is told.
 """
@@ -16,11 +17,15 @@ import sys
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) < 2:
+    args = argv[1:]
+    with_args = bool(args) and args[0] == "--args"
+    if with_args:
+        args = args[1:]
+    if not args:
         print((__doc__ or "").strip(), file=sys.stderr)
         return 2
     proc = subprocess.Popen(
-        argv[1:],
+        args,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
@@ -67,7 +72,11 @@ def main(argv: list[str]) -> int:
         print("mcp-tools: the server did not answer tools/list", file=sys.stderr)
         return 1
     for tool in reply["result"]["tools"]:
-        print(tool["name"])
+        if with_args:
+            for argument in tool.get("inputSchema", {}).get("properties", {}):
+                print(tool["name"], argument)
+        else:
+            print(tool["name"])
     return 0
 
 
