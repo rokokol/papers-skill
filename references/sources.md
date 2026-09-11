@@ -1,10 +1,10 @@
 # Sources
 
-What paper-search-mcp can reach, which of it to use for which question, and where it fails quietly. The server's own tool list is the authority on names and arguments; this file is about choosing.
+What paper-search-mcp can reach, which of it to use for which question, and where it fails quietly. The server's own tool list is the authority on names and arguments; this file is about choosing
 
 ## Sources by area
 
-`search_papers` takes `sources` as one comma-separated string (`"arxiv,semantic"`, or `"all"`) and a `max_results_per_source`. Start with the primary pair for the area, add one secondary only when the primary returned nothing useful; never fan out across every source because it is available.
+`search_papers` takes `sources` as one comma-separated string (`"arxiv,semantic"`, or `"all"`) and a `max_results_per_source`. Start with the primary pair for the area, add one secondary only when the primary returned nothing useful; never fan out across every source because it is available
 
 | Area | Primary | Secondary | Notes |
 |---|---|---|---|
@@ -15,7 +15,7 @@ What paper-search-mcp can reach, which of it to use for which question, and wher
 | Psychology, cognitive science | `openalex`, `semantic` | `pubmed` | No free index owns the field; OpenAlex has the widest coverage of its journals, PubMed the clinical side |
 | Anything else | `openalex`, `semantic` | `crossref` | OpenAlex is the broadest open index; Crossref resolves a DOI to its record |
 
-Per-source tools (`search_arxiv`, `search_pubmed`, `search_semantic`, …) exist for when one source needs its own parameters: `search_arxiv` sorts by relevance or date, `search_semantic` and `search_papers` filter by `year`, `search_crossref` takes a filter string.
+Per-source tools (`search_arxiv`, `search_pubmed`, `search_semantic`, …) exist for when one source needs its own parameters: `search_arxiv` sorts by relevance or date, `search_semantic` and `search_papers` filter by `year`, `search_crossref` takes a filter string
 
 ## Identifiers
 
@@ -32,7 +32,7 @@ The `read` mode needs a source and a `paper_id` in that source's form. Resolve b
 | a title from a shortlist | the source that listed it | the `paper_id` from that result |
 | a title with no identifier | `search_papers` first | never guess an id from a title |
 
-A paper reachable by several identifiers is read once, through the source most likely to hold its full text: arXiv for anything with an arXiv id, PubMed for anything biomedical, since its read tool pulls the PMC copy when one exists, Crossref plus Unpaywall for the rest. Not every source that can be searched can be read: the server has `read_<source>_paper` for arxiv, pubmed, biorxiv, medrxiv, semantic, crossref, openalex, dblp and the open repositories, and none for pmc, europepmc, core or google_scholar.
+A paper reachable by several identifiers is read once, through the source most likely to hold its full text: arXiv for anything with an arXiv id, PubMed for anything biomedical, since its read tool pulls the PMC copy when one exists, Crossref plus Unpaywall for the rest. Not every source that can be searched can be read: the server has `read_<source>_paper` for arxiv, pubmed, biorxiv, medrxiv, semantic, crossref, openalex, dblp and the open repositories, and none for pmc, europepmc, core or google_scholar
 
 ## Full text
 
@@ -44,7 +44,7 @@ A paper reachable by several identifiers is read once, through the source most l
 
 ## Keys and limits
 
-Keys are optional, free, and read by the server from an env file; the variable names carry the `PAPER_SEARCH_MCP_` prefix and the unprefixed legacy names still work.
+Keys are optional, free, and read by the server from an env file; the variable names carry the `PAPER_SEARCH_MCP_` prefix and the unprefixed legacy names still work
 
 | Variable | Source | Without it |
 |---|---|---|
@@ -54,7 +54,7 @@ Keys are optional, free, and read by the server from an env file; the variable n
 | `PAPER_SEARCH_MCP_DOAJ_API_KEY` | DOAJ | 100 requests per hour |
 | `PAPER_SEARCH_MCP_IEEE_API_KEY`, `PAPER_SEARCH_MCP_ACM_API_KEY` | IEEE Xplore, ACM | the connector stays off; both are skeletons upstream that search but cannot download |
 
-The services' own rules still apply behind the server: arXiv asks for one request every three seconds on a single connection; PubMed allows three requests per second without a key; OpenAlex and Crossref give a faster pool to requests that carry an email. A search that returns a rate-limit error is retried once after a pause, never in a loop.
+The services' own rules still apply behind the server: arXiv asks for one request every three seconds on a single connection; PubMed allows three requests per second without a key; OpenAlex and Crossref give a faster pool to requests that carry an email. A search that returns a rate-limit error is retried once after a pause, never in a loop
 
 ## Known pitfalls
 

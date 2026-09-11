@@ -1,10 +1,10 @@
 # The vault profile
 
-This skill does not know how any vault is organised, and it should not: a note's shape, folder and frontmatter belong to the vault's owner. The owner states them once in a profile, and the `note` mode reads it. Without a profile the skill still works; it asks for a path and writes plain Markdown.
+This skill does not know how any vault is organised, and it should not: a note's shape, folder and frontmatter belong to the vault's owner. The owner states them once in a profile, and the `note` mode reads it. Without a profile the skill still works; it asks for a path and writes plain Markdown
 
 ## Where
 
-`$OBSIDIAN_VAULT_PATH/.claude/papers/profile.yml`. The variable comes from the environment or from `env.OBSIDIAN_VAULT_PATH` in the harness's settings; unset means ask the user, never search the disk for a vault.
+`$OBSIDIAN_VAULT_PATH/.claude/papers/profile.yml`. The variable comes from the environment or from `env.OBSIDIAN_VAULT_PATH` in the harness's settings; unset means ask the user, never search the disk for a vault
 
 ## Fields
 
@@ -21,7 +21,7 @@ attachments_dir: "00. Вложения/Статьи"
 language: ru
 ```
 
-`style_skill` and `preset` are required; the rest is optional.
+`style_skill` and `preset` are required; the rest is optional
 
 ## How the note mode uses it
 
@@ -33,4 +33,4 @@ language: ru
 
 ## Without a profile
 
-Ask where to put the file, then write it there as plain Markdown: a frontmatter of `title`, `doi`, `arxiv`, `url`, `authors`, `year`, `venue`, `created`, followed by the digest verbatim. Nothing else is inferred about the vault.
+Ask where to put the file, then write it there as plain Markdown: a frontmatter of `title`, `doi`, `arxiv`, `url`, `authors`, `year`, `venue`, `created`, followed by the digest verbatim. Nothing else is inferred about the vault

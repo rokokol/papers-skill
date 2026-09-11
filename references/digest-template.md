@@ -1,6 +1,6 @@
 # Digest template
 
-The shape every reading subagent returns and every note is built from. Field names stay in English so the master can check them; the content is in the language of the conversation. The whole digest is at most 450 words; a field with nothing to say holds one short sentence saying so, never nothing. The heading is the paper's own title as printed; the example below shows one so that nothing in the template reads as a placeholder to copy. The message ends with the Read field: no preamble before the heading, nothing after the last field.
+The shape every reading subagent returns and every note is built from. Field names stay in English so the master can check them; the content is in the language of the conversation. The whole digest is at most 450 words; a field with nothing to say holds one short sentence saying so, never nothing. The heading is the paper's own title as printed; the example below shows one so that nothing in the template reads as a placeholder to copy. The message ends with the Read field: no preamble before the heading, nothing after the last field
 
 ```
 ## Robust Speech Recognition via Large-Scale Weak Supervision

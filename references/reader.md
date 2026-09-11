@@ -1,6 +1,6 @@
 # The reading subagent
 
-The master spawns it with the `Agent` tool, `subagent_type: general-purpose`, an explicit `model` (`sonnet` unless the user named another), and the prompt below with the placeholders filled. One paper per subagent; a review spawns several, one at a time by default.
+The master spawns it with the `Agent` tool, `subagent_type: general-purpose`, an explicit `model` (`sonnet` unless the user named another), and the prompt below with the placeholders filled. One paper per subagent; a review spawns several, one at a time by default
 
 ## Prompt
 
@@ -46,8 +46,8 @@ Rules:
 
 ## A paper the user already has
 
-A local PDF or a path skips the ladder: the prompt keeps every line but replaces the three rungs with "Open FILE_PATH with the Read tool" and the identifier line with the path. The digest's last field then names the file as the source.
+A local PDF or a path skips the ladder: the prompt keeps every line but replaces the three rungs with "Open FILE_PATH with the Read tool" and the identifier line with the path. The digest's last field then names the file as the source
 
 ## What comes back
 
-The subagent's final message is the digest, or the one-line failure. The master shows a digest as received, adds its own reading in one or two paragraphs, and moves to `note` or `review`. A final message that is not in the template's shape, or over its bound, is a failed read: say so and spawn once more with the same prompt plus the failure named ("the previous attempt exceeded the bound", "the previous attempt omitted the Read field"); after a second failure, report it instead of a third attempt, and never edit the digest into shape yourself. A failure line is shown as such and is never turned into a digest from memory.
+The subagent's final message is the digest, or the one-line failure. The master shows a digest as received, adds its own reading in one or two paragraphs, and moves to `note` or `review`. A final message that is not in the template's shape, or over its bound, is a failed read: say so and spawn once more with the same prompt plus the failure named ("the previous attempt exceeded the bound", "the previous attempt omitted the Read field"); after a second failure, report it instead of a third attempt, and never edit the digest into shape yourself. A failure line is shown as such and is never turned into a digest from memory
