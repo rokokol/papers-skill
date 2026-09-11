@@ -57,4 +57,8 @@ The index lives under `~/.pqa/indexes/` and is keyed by a hash of the settings t
 - Everything PaperQA2 knows comes from the folder: a question about a paper not in it gets an honest "no evidence", not a search
 - A local 9B model summarises well and reasons less well; when the answer hinges on a subtle comparison, read the two papers with `read` and decide in the master
 - The first `index` over a large folder is slow: every chunk is embedded once, on the GPU
-- A file that fails to index is marked `ERROR` in the index, logged once as "Error parsing … skipping index for this file", and skipped without a word by every later `index` into the same index, even when the failure was a passing rate limit. A paper that is in the folder but never answers is the sign; trash that index's directory under `~/.pqa/indexes/` and index again to retry it
+- A file that fails to index is marked `ERROR` in the index, logged once as "Error parsing … skipping index for this file", and skipped without a word by every later `index` into the same index, even when the failure was a passing rate limit. A paper that is in the folder but never answers is the sign; trash that index's directory under `~/.pqa/indexes/` and index again to retry it. The index names are hashes, so this lists every file marked failed and the index it sits in, looking where PaperQA2 does, under `PQA_HOME` when it is set (the map is a zlib-compressed pickle of plain strings, so any Python 3 reads it):
+
+  ```sh
+  python3 -c 'import os, pathlib, pickle, zlib; root = pathlib.Path(os.environ.get("PQA_HOME") or pathlib.Path.home()) / ".pqa" / "indexes"; [print(z.parent.name, f) for z in sorted(root.glob("*/files.zip")) for f, h in pickle.loads(zlib.decompress(z.read_bytes())).items() if h == "ERROR"]'
+  ```
