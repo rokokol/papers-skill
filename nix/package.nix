@@ -2,6 +2,7 @@
   lib,
   python3Packages,
   fetchPypi,
+  fetchpatch,
 }:
 
 # paper-search-mcp from its PyPI release, built against nixpkgs' mcp 1.x. Upstream leaves
@@ -19,6 +20,15 @@ python3Packages.buildPythonApplication rec {
     inherit version;
     hash = "sha256-NQGmJYQMqzQQ6ZDi8t9RvULKcwCHJFi/1Ev2vx8RiPg=";
   };
+
+  # A stopgap until a release carries it; see workarounds.md for what it fixes and when it goes
+  patches = [
+    (fetchpatch {
+      url = "https://github.com/openags/paper-search-mcp/commit/f3c0d8260992ed8b5f1a4c186a81ad05b2c77a37.patch";
+      includes = [ "paper_search_mcp/*" ];
+      hash = "sha256-P2QR+pTelvzOZBuZrIImBIUwBBJgg7vT6WIgIRp5KvY=";
+    })
+  ];
 
   build-system = [ python3Packages.hatchling ];
 

@@ -166,4 +166,5 @@ flake.nix             packages, the module, the overlay, the dev shell and the c
 tests/mcp-tools.py    asks a stdio MCP server what tools it has; check.sh compares the documents to it
 check.sh              the gate, self-tested against planted defects
 check-*.sh            vendored checkers, kept byte-equal to their source by vendor-sync.sh
+workarounds.md        what exists only because something upstream is broken, and how to tell when it can go
 ```
