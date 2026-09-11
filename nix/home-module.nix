@@ -28,6 +28,9 @@ let
           # litellm's default of 60 s is shorter than Ollama loading a 9B model into the
           # GPU on the first call, and that first call fails the whole index
           timeout = cfg.corpus.timeout;
+          # A reasoning model spends its budget thinking and returns the summary empty;
+          # Ollama's think switch turns that off for models that have it
+          think = cfg.corpus.thinking;
         };
       }
     ];
@@ -42,7 +45,14 @@ let
     embedding_config = {
       kwargs.api_base = cfg.corpus.ollamaUrl;
     };
-    answer.max_concurrent_requests = cfg.corpus.concurrency;
+    # The JSON summary prompt asks a small model for a score inside JSON, and it returns the
+    # summary with the score missing; the text prompt is parsed by regex and survives that
+    prompts.use_json = cfg.corpus.jsonPrompts;
+    answer = {
+      max_concurrent_requests = cfg.corpus.concurrency;
+      evidence_k = cfg.corpus.evidenceK;
+      answer_max_sources = cfg.corpus.answerMaxSources;
+    };
     # PaperQA2's MultimodalOptions is an IntEnum: 0 is text only, 1 parses media and asks the
     # model for a caption of every figure and table, which on a local model turns one paper
     # into minutes of GPU time. The enrichment model is also what index time reaches for, so
@@ -55,6 +65,7 @@ let
     agent = {
       agent_llm = cfg.corpus.llm;
       agent_llm_config = route cfg.corpus.llm;
+      search_count = cfg.corpus.searchCount;
       index.paper_directory = cfg.corpus.directory;
     };
   }
@@ -83,9 +94,9 @@ in
 
       package = lib.mkOption {
         type = lib.types.package;
-        default = flakePackages.paper-qa;
-        defaultText = lib.literalExpression "papers-skill.packages.\${system}.paper-qa";
-        description = "The PaperQA2 environment to install; it provides the pqa command";
+        default = flakePackages.pqa;
+        defaultText = lib.literalExpression "papers-skill.packages.\${system}.pqa";
+        description = "What provides the pqa command in the profile; the default is a wrapper over the locked environment, since installing the environment itself collides with any other Python environment in the profile";
       };
 
       settingsName = lib.mkOption {
@@ -102,14 +113,44 @@ in
 
       llm = lib.mkOption {
         type = lib.types.str;
-        default = "ollama/qwen3.5:9b";
-        description = "litellm model name for answering, summarising and the agent; an Ollama model is ollama/<name>";
+        default = "ollama_chat/qwen3.5:9b";
+        description = "litellm model name for answering, summarising and the agent. An Ollama model is ollama_chat/<name>: that provider speaks to Ollama's chat endpoint, which carries tool calls; the ollama/ provider speaks to the generate endpoint, which does not, and every PaperQA2 agent ends a turn with a forced tool call";
+      };
+
+      thinking = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Let a reasoning model think before answering; off keeps its output to the summary and the answer, which is what PaperQA2 parses";
+      };
+
+      jsonPrompts = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Ask for the per-passage summaries as JSON; off uses the text prompts, which a small local model fills in reliably";
+      };
+
+      evidenceK = lib.mkOption {
+        type = lib.types.int;
+        default = 5;
+        description = "Passages retrieved per question; each one is a summary call to the local model";
+      };
+
+      answerMaxSources = lib.mkOption {
+        type = lib.types.int;
+        default = 3;
+        description = "Passages the answer may cite";
+      };
+
+      searchCount = lib.mkOption {
+        type = lib.types.int;
+        default = 4;
+        description = "Papers the agent's index search returns per query";
       };
 
       embedding = lib.mkOption {
         type = lib.types.str;
         default = "ollama/bge-m3";
-        description = "litellm embedding model name; bge-m3 is multilingual, nomic-embed-text is smaller and English-only";
+        description = "litellm embedding model name; bge-m3 is multilingual, nomic-embed-text is smaller and English-only. Embeddings stay on the ollama/ provider, which is the one litellm embeds through";
       };
 
       ollamaUrl = lib.mkOption {

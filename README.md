@@ -129,7 +129,7 @@ programs.papers.corpus = {
 };
 ```
 
-Then `pqa -s papers index <folder>` once, and `pqa-evidence -s papers "<query>"` for every question: it returns the passages PaperQA2 retrieved, untouched, and the agent reasons over them, since a local model retrieves well and reasons less well. Which models to pick and why, the commands, and why `pqa ask` needs a model that returns tool calls are in [references/paperqa.md](references/paperqa.md)
+Then `pqa -s papers index <folder>` once, and `pqa-evidence -s papers "<query>"` for every question: it returns the passages PaperQA2 retrieved, untouched, and the agent reasons over them, since a local model retrieves well and reasons less well. `pqa -s papers ask "…"` has the local model answer instead, in about a minute of GPU time. Which models to pick and why, the commands, and the three settings that make `ask` work on Ollama at all are in [references/paperqa.md](references/paperqa.md)
 
 ## Notes in a vault
 

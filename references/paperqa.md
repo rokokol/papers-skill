@@ -14,23 +14,25 @@ A reading subagent answers questions about one paper. When the question spans a 
 
 ```json
 {
-  "llm": "ollama/qwen3.5:9b",
-  "llm_config": { "model_list": [ { "model_name": "ollama/qwen3.5:9b", "litellm_params": { "model": "ollama/qwen3.5:9b", "api_base": "http://localhost:11434", "timeout": 600 } } ] },
-  "summary_llm": "ollama/qwen3.5:9b",
+  "llm": "ollama_chat/qwen3.5:9b",
+  "llm_config": { "model_list": [ { "model_name": "ollama_chat/qwen3.5:9b", "litellm_params": { "model": "ollama_chat/qwen3.5:9b", "api_base": "http://localhost:11434", "timeout": 600, "think": false } } ] },
+  "summary_llm": "ollama_chat/qwen3.5:9b",
   "summary_llm_config": { "model_list": [ "…the same route…" ] },
   "embedding": "ollama/bge-m3",
   "embedding_config": { "kwargs": { "api_base": "http://localhost:11434" } },
-  "answer": { "max_concurrent_requests": 2 },
-  "parsing": { "multimodal": 0 },
+  "prompts": { "use_json": false },
+  "answer": { "max_concurrent_requests": 2, "evidence_k": 5, "answer_max_sources": 3 },
+  "parsing": { "multimodal": 0, "enrichment_llm": "ollama_chat/qwen3.5:9b", "enrichment_llm_config": { "model_list": [ "…the same route…" ] } },
   "agent": {
-    "agent_llm": "ollama/qwen3.5:9b",
+    "agent_llm": "ollama_chat/qwen3.5:9b",
     "agent_llm_config": { "model_list": [ "…the same route…" ] },
+    "search_count": 4,
     "index": { "paper_directory": "/home/me/.cache/papers" }
   }
 }
 ```
 
-Without the module, write the same file by hand at that path, or under another `HOME`-like root named by `PQA_HOME`. Both Ollama models must be pulled before the first run: `ollama pull qwen3.5:9b` and `ollama pull bge-m3`. The `timeout` matters: litellm's default of 60 seconds is shorter than Ollama loading a 9B model into the GPU on the first call, and that first call fails the whole index (measured 2026-09-10). The concurrency matters for the same reason: Ollama serves one model, so four parallel requests only queue behind each other until the timeout. `parsing.multimodal` at 0 keeps indexing to text: the default parses every figure and table and asks the model for a caption of each, which on a local model turns one paper into ten minutes of GPU time and adds nothing to text retrieval. `pqa ask` does not work with this preset, and the reason is the model, not the settings: every PaperQA2 agent, the default tool selector and the fixed-order `fake` one alike, ends a turn by forcing a tool call (`tool_choice` required, or the `complete` tool), and `qwen3.5:9b` served by Ollama answers a forced tool call with an empty message, so `ask` finishes with "no papers" (measured 2026-09-10, 12 s and 80 s respectively). `ask` needs a model that returns tool calls through litellm; with a local one, `pqa-evidence` is the corpus mode.
+Without the module, write the same file by hand at that path, or under another `HOME`-like root named by `PQA_HOME`. Both Ollama models must be pulled before the first run: `ollama pull qwen3.5:9b` and `ollama pull bge-m3`. The `timeout` matters: litellm's default of 60 seconds is shorter than Ollama loading a 9B model into the GPU on the first call, and that first call fails the whole index (measured 2026-09-10). The concurrency matters for the same reason: Ollama serves one model, so four parallel requests only queue behind each other until the timeout. `parsing.multimodal` at 0 keeps indexing to text: the default parses every figure and table and asks the model for a caption of each, which on a local model turns one paper into ten minutes of GPU time and adds nothing to text retrieval. `pqa ask` on a local model took three settings to get right, and the module carries all three. Every PaperQA2 agent ends a turn by forcing a tool call, and litellm's `ollama/` provider speaks to Ollama's generate endpoint, which has no tool calls: the model answers with an empty message and `ask` finishes with "no papers" (measured 2026-09-10: 12 s with the default agent, 80 s with `fake`). The `ollama_chat/` provider speaks to the chat endpoint and the tool calls arrive; with it the same question ran to the evidence stage in 22 minutes and then failed on the JSON summary prompt, where a 9B reasoning model returned the summary with the score missing. Text prompts (`prompts.use_json` off), `think` off in the route, and a smaller evidence budget brought the same question to a correct cited answer in 44 s. Embeddings stay on `ollama/`, the provider litellm embeds through.
 
 ## Which models
 
@@ -46,7 +48,7 @@ pqa -s papers ask "which of these papers measured word error rate against humans
 pqa -s papers search "weak supervision"              # which papers in the index match; no passages
 ```
 
-`pqa-evidence` is this repository's own script (`tools/evidence.py`, run by the environment's interpreter): PaperQA2's paper search over the index, then its evidence gathering with the contextual summaries switched off, so the only model that runs is the embedding model and the passages come back in seconds, untouched. In the skill it is the corpus mode: the master writes the synthesis, since retrieval is where a local model is as good as any and synthesis is where it is not. `ask` would spend the local model on the per-passage summaries and the final answer, and is the economy option when a model that can drive it is configured; see the limits below for why the default preset cannot. `pqa search` is a different thing from both: a keyword search over the index that names papers, not passages.
+`pqa-evidence` is this repository's own script (`tools/evidence.py`, run by the environment's interpreter): PaperQA2's paper search over the index, then its evidence gathering with the contextual summaries switched off, so the only model that runs is the embedding model and the passages come back in seconds, untouched. In the skill it is the default: the master writes the synthesis, since retrieval is where a local model is as good as any and synthesis is where it is not. `ask` spends the local model on the per-passage summaries and the final answer and returns one cited paragraph; it is the economy option for when the conversation's context is to be spared, and the preset below is what makes it work on a local model. `pqa search` is a different thing from both: a keyword search over the index that names papers, not passages.
 
 The index lives under `~/.pqa/indexes/` and is keyed by a hash of the settings: a changed model means a rebuilt index. Adding papers is dropping PDFs into the folder and running `index` again; the folder is the same one the reading subagent downloads into, so a paper read once is in the corpus already.
 

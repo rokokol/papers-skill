@@ -67,6 +67,12 @@
         default = paper-search-mcp;
         paper-search-mcp = pkgs.callPackage ./nix/package.nix { };
         paper-qa = paperqaEnv pkgs;
+        # The command alone, for a profile: the environment carries a whole site-packages,
+        # and two Python environments in one Home Manager profile collide on any file they
+        # share, so what a profile installs is this wrapper rather than the environment
+        pqa = pkgs.writeShellScriptBin "pqa" ''
+          exec ${paper-qa}/bin/pqa "$@"
+        '';
         # Retrieval without the answer model: the passages PaperQA2 would summarise, printed
         # as they are, run by the environment's own interpreter so it sees the same lock
         pqa-evidence = pkgs.writeShellScriptBin "pqa-evidence" ''
@@ -84,6 +90,7 @@
         inherit (self.packages.${final.stdenv.hostPlatform.system})
           paper-search-mcp
           paper-qa
+          pqa
           pqa-evidence
           ;
       };
