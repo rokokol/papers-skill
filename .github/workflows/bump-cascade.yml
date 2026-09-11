@@ -50,13 +50,18 @@ jobs:
           echo "moved=1" >>"$GITHUB_OUTPUT"
 
   # The whole point of the temp branch: a reusable workflow checks out a ref, so the
-  # bump has to exist somewhere before the real checks can see it
+  # bump has to exist somewhere before the real checks can see it; on every platform the
+  # gate runs on, the same two ci.yml and macos.yml cover on a push
   verify:
     needs: bump
     if: needs.bump.outputs.moved == '1'
+    strategy:
+      matrix:
+        runner: [ubuntu-latest, macos-latest]
     uses: ./.github/workflows/ci.yml
     with:
       ref: ${{ needs.bump.outputs.branch }}
+      runner: ${{ matrix.runner }}
 
   # Red leaves the branch alone, with the bump on it, so the failure can be looked at
   land:

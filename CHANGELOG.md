@@ -12,6 +12,10 @@ Kept in the shape of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), d
 
 - `search_papers` reports a Semantic Scholar refusal (rate limited, an HTTP error, a network error) under `errors["semantic"]` instead of answering zero results for it, and `search_semantic` fails instead of returning an empty list: the packaged `paper-search-mcp` carries the fix from openags/paper-search-mcp#111 until a release does, as `workarounds.md` records
 
+### Removed
+
+- `x86_64-darwin` from the flake's systems: the locked nixpkgs refuses to evaluate for Intel Macs, so its packages could never be built. `aarch64-darwin` stays, and is now built and checked on a macOS runner on every push and pull request
+
 ## 2026-09-10
 
 ### Added

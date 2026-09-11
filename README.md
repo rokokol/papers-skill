@@ -10,6 +10,7 @@
 ![Bash](https://img.shields.io/badge/Bash-4EAA25?style=flat&logo=gnubash&logoColor=white)
 [![license](https://img.shields.io/badge/MIT-3DA639?style=flat)](LICENSE)
 [![ci](https://github.com/rokokol/papers-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/rokokol/papers-skill/actions/workflows/ci.yml)
+[![macos](https://github.com/rokokol/papers-skill/actions/workflows/macos.yml/badge.svg)](https://github.com/rokokol/papers-skill/actions/workflows/macos.yml)
 
 </div>
 

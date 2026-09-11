@@ -1,0 +1,19 @@
+name: macos
+
+# The gate of ci.yml on the other platform the flake builds for, Nix on Apple silicon. The
+# checks live in ci.yml; this file exists so the README states "builds on macOS" with a
+# badge of its own
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    uses: ./.github/workflows/ci.yml
+    with:
+      runner: macos-latest

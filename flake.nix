@@ -33,10 +33,10 @@
     }:
     let
       lib = nixpkgs.lib;
+      # No x86_64-darwin: the nixpkgs this flake locks refuses to evaluate for Intel Macs
       systems = [
         "x86_64-linux"
         "aarch64-linux"
-        "x86_64-darwin"
         "aarch64-darwin"
       ];
       forAllSystems = f: lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
