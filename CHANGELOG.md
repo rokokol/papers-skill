@@ -8,14 +8,27 @@ Kept in the shape of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), d
 
 - the corpus preset turns PaperQA2's doc details off (`parsing.use_doc_details`), so `pqa index` no longer asks the model for a structured citation of each paper or Semantic Scholar and Crossref for its metadata; `programs.papers.corpus.docDetails` turns it back on. With it on, one Semantic Scholar 429 ended the whole index with exit 1 and left the paper marked failed in that index for good; `references/paperqa.md` says how to spot such a paper and retry it
 - the repository-wide workaround record follows the maintainer-document convention as `WORKAROUNDS.md` and is linked from a header badge
-
-### Fixed
-
-- `search_papers` reports a Semantic Scholar refusal (rate limited, an HTTP error, a network error) under `errors["semantic"]` instead of answering zero results for it, and `search_semantic` fails instead of returning an empty list: the packaged `paper-search-mcp` carries the fix from openags/paper-search-mcp#111 until a release does, as `WORKAROUNDS.md` records
+- the gate holds every document — `README.md` now included — to the packaged server through the ci skill's `check-interface.sh`, vendored: an MCP tool name anywhere, call notation, and a span that is wholly a tool name, each tool's arguments held to that tool's own. It replaces `tests/doc-args.py` and the tool-name grep, and also checks the bare tool names the identifier table uses
+- `tests/mcp-tools.py` takes the reply that answers its own request rather than the first JSON line, so a notification the server volunteers is not read as the tool list, follows `nextCursor` to the last page, and stops a server that will not exit instead of dying on the timeout
+- `programs.papers.corpus.extraSettings` is merged recursively, so setting one key of `answer` keeps the rest of it; enabling the corpus without `programs.papers.enable` is an assertion failure where it installed nothing in silence
+- the description drops the citation triggers, which no mode serves, and gains the corpus mode's
 
 ### Removed
 
 - `x86_64-darwin` from the flake's systems: the locked nixpkgs refuses to evaluate for Intel Macs, so its packages could never be built. `aarch64-darwin` stays, and is now built and checked on a macOS runner on every push and pull request
+- the step in `references/sources.md` that fetched an arXiv paper's LaTeX source: the reading subagent is barred from WebFetch and the master from reading, so nobody could carry it out
+
+### Fixed
+
+- `search_papers` reports a Semantic Scholar refusal (rate limited, an HTTP error, a network error) under `errors["semantic"]` instead of answering zero results for it, and `search_semantic` fails instead of returning an empty list: the packaged `paper-search-mcp` carries the fix from openags/paper-search-mcp#111 until a release does, as `WORKAROUNDS.md` records
+- **the readme's corpus snippet set the answering model to `ollama/qwen3.5:9b`** and called it the default, while the default is `ollama_chat/`, and `references/paperqa.md` shows the `ollama/` provider ending `ask` with "no papers". The snippet sets only the folder now
+- **the source check could not catch a made-up source**: it kept only the backticked words the CLI lists, so a misspelt one fell out of the comparison unseen, and the sources that must have a read tool were a list kept in the gate that had already dropped `dblp`. The routing columns are read whole now and every word must be a source or a tool, and the read-tool check takes its sources from the reader prompt's `SOURCE` row
+- the note mode moved a kept PDF into the vault's attachments, which took it out of the corpus folder it had been downloaded into; it copies now
+- a `doi` or `title` placeholder written `unknown` could be passed to `download_with_fallback` as a real value; the prompt leaves such arguments out
+- the corpus mode's "no evidence" was presented as absence, though each query reaches only the few papers one index search brings up (`searchCount`, 4 by default); `SKILL.md` and `references/paperqa.md` say so
+- the module's comment on `PQA_HOME` had it as the `.pqa` directory itself, where PaperQA2 takes it as a root and appends `.pqa`
+- counts written beside the lists they count — the server's tool total, the free keys, the settings `ask` needs, the reader's rungs — and the readme's promise that every check is proven able to fail, which the linters are not
+- `WORKAROUNDS.md`'s removal check fails when the release has no `semantic.py`, where it printed the same 0 as an unfixed release
 
 ## 2026-09-10
 

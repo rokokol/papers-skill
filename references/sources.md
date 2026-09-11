@@ -40,7 +40,6 @@ A paper reachable by several identifiers is read once, through the source most l
 
 1. `download_with_fallback(source, paper_id, doi, title, save_path)` tries the source, open repositories, Unpaywall, and then Sci-Hub when `use_scihub` is left on; pass the DOI and the title so the fallbacks have something to match. The Sci-Hub step is upstream's default and a choice for the owner of the installation, not for this skill; set `use_scihub: false` when the user says so
 2. The PDF at `save_path` is read with the `Read` tool, in the subagent
-3. For arXiv papers whose extraction is poor, the LaTeX source at `https://arxiv.org/e-print/<id>` is exact; fetch it only when the PDF text is unusable
 
 ## Keys and limits
 

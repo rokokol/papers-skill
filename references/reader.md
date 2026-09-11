@@ -1,6 +1,6 @@
 # The reading subagent
 
-The master spawns it with the `Agent` tool, `subagent_type: general-purpose`, an explicit `model` (`sonnet` unless the user named another), and the prompt below with the placeholders filled. One paper per subagent; a review spawns several, one at a time by default
+The master spawns it with the `Agent` tool, `subagent_type: general-purpose`, the explicit `model` [SKILL.md](../SKILL.md#setup) prescribes, and the prompt below with the placeholders filled. One paper per subagent; a review spawns several, one at a time by default
 
 ## Prompt
 
@@ -15,7 +15,7 @@ Language of the digest: LANGUAGE
 
 Obtain the text with the ladder below. Stop at the first rung that yields the full text; a rung that errors or returns only an abstract hands over to the next.
 1. Load the tools by exact name: ToolSearch with query "select:mcp__paper-search__read_SOURCE_paper,mcp__paper-search__download_with_fallback" and max_results 2. Then call mcp__paper-search__read_SOURCE_paper with paper_id PAPER_ID and save_path SAVE_PATH
-2. Call mcp__paper-search__download_with_fallback with source SOURCE, paper_id PAPER_ID, save_path SAVE_PATH, use_scihub USE_SCIHUB, and doi and title when they are given below; then open the PDF it saved with the Read tool
+2. Call mcp__paper-search__download_with_fallback with source SOURCE, paper_id PAPER_ID, save_path SAVE_PATH, use_scihub USE_SCIHUB, and doi and title when they are given below and are not "unknown"; then open the PDF it saved with the Read tool
 3. Only when ToolSearch found no paper-search tools at all: run `paper-search read SOURCE PAPER_ID -o SAVE_PATH` in Bash and read its output
 If a rung yielded only the abstract and the rest yielded nothing, write the digest from the abstract and say so in the last field. If every rung errored and no text at all was obtained, return only one line, "could not read PAPER_ID: <the last error>", and nothing else.
 DOI: DOI
@@ -35,7 +35,7 @@ Rules:
 | Placeholder | Value |
 |---|---|
 | `IDENTIFIER` | what the user wrote, verbatim |
-| `SOURCE` | the server's lowercase source name from the identifier table in [sources.md](sources.md#identifiers): `arxiv`, `pubmed`, `biorxiv`, `medrxiv`, `semantic`, `crossref`, `openalex`, `dblp`; never the user's spelling, since `read_arXiv_paper` is not a tool |
+| `SOURCE` | the server's lowercase source name from the identifier table in [sources.md](sources.md#identifiers): `arxiv`, `pubmed`, `biorxiv`, `medrxiv`, `semantic`, `crossref`, `openalex`, `dblp`; never the user's spelling, since `read_arXiv_paper` is not a tool <!-- check-interface: allow --> |
 | `PAPER_ID` | the id in that source's form, from the same table |
 | `DOI`, `TITLE` | when known from a shortlist or a Crossref lookup; write `unknown` otherwise, and the subagent leaves the arguments out |
 | `USE_SCIHUB` | `false` when the user has said so, `true` otherwise, which is upstream's default |
@@ -46,7 +46,7 @@ Rules:
 
 ## A paper the user already has
 
-A local PDF or a path skips the ladder: the prompt keeps every line but replaces the three rungs with "Open FILE_PATH with the Read tool" and the identifier line with the path. The digest's last field then names the file as the source
+A local PDF or a path skips the ladder: the prompt keeps every line but replaces the ladder's rungs with "Open FILE_PATH with the Read tool" and the identifier line with the path. The digest's last field then names the file as the source
 
 ## What comes back
 

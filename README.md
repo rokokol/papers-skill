@@ -17,7 +17,7 @@
 
 A paper is long and its PDF is worse: the text of one article is a large share of a conversation's context, and a literature question is several of them. This skill keeps the reading out of the main conversation. The agent finds and decides; a subagent with its own context reads one paper and returns a digest of bounded length; the agent compares digests and, only when you say so, files one into your notes
 
-The sources come from [paper-search-mcp](https://github.com/openags/paper-search-mcp), which reaches arXiv, PubMed, Semantic Scholar, OpenAlex, Crossref, bioRxiv and a dozen more through one MCP server or one CLI. This repository packages it for Nix, because the PyPI release breaks under the current MCP SDK and nixpkgs does not carry it, and ships a Home Manager module so the keys never enter a store path or a chat
+The sources come from [paper-search-mcp](https://github.com/openags/paper-search-mcp), which reaches arXiv, PubMed, Semantic Scholar, OpenAlex, Crossref, bioRxiv and more through one MCP server or one CLI. This repository packages it for Nix, because the PyPI release breaks under the current MCP SDK and nixpkgs does not carry it, and ships a Home Manager module so the keys never enter a store path or a chat
 
 ## Contents
 
@@ -104,11 +104,11 @@ claude mcp list
 The skill assumes the name `paper-search`, so its tools are `mcp__paper-search__*`. Another client, or a session where the server is not registered, falls back to the `paper-search` CLI, which the skill drives from Bash; the per-source `read_*_paper` tools and `download_with_fallback` exist only on the server
 
 > [!NOTE]
-> When a download falls back to a PDF on disk, the reading subagent opens it with Claude Code's `Read` tool, which renders PDFs through `pdftoppm` from poppler; without `poppler-utils` on `PATH` that rung fails and the subagent goes on to the CLI, which extracts the text itself. Install poppler if you want the PDF rung to work
+> When a download falls back to a PDF on disk, the reading subagent opens it with Claude Code's `Read` tool, which renders PDFs through `pdftoppm` from poppler; without `poppler-utils` on `PATH` that rung fails and the subagent moves down the ladder in [references/reader.md](references/reader.md#prompt). Install poppler if you want the PDF rung to work
 
 ## Keys
 
-Every source works without a key. Three free ones change how well: a [Semantic Scholar](https://www.semanticscholar.org/product/api) key takes you off the anonymous pool shared by everyone, a [CORE](https://core.ac.uk/services/api) key stops its frequent 500s, and an email for [Unpaywall](https://unpaywall.org/products/api) turns on the open-access step of the download fallback, which is otherwise skipped. The server reads them from an env file: the path in `PAPER_SEARCH_MCP_ENV_FILE`, else `~/.config/paper-search-mcp/.env`
+Every source works without a key. Free keys change how well: a [Semantic Scholar](https://www.semanticscholar.org/product/api) key takes you off the anonymous pool shared by everyone, a [CORE](https://core.ac.uk/services/api) key stops its frequent 500s, and an email for [Unpaywall](https://unpaywall.org/products/api) turns on the open-access step of the download fallback, which is otherwise skipped. The server reads them from an env file: the path in `PAPER_SEARCH_MCP_ENV_FILE`, else `~/.config/paper-search-mcp/.env`
 
 ```sh
 PAPER_SEARCH_MCP_SEMANTIC_SCHOLAR_API_KEY=...
@@ -126,12 +126,10 @@ One paper is read by a subagent; a question across a whole folder of papers is r
 programs.papers.corpus = {
   enable = true;
   directory = "/home/me/.cache/papers";   # the folder the skill downloads into
-  llm = "ollama/qwen3.5:9b";              # the defaults; both pulled with ollama pull
-  embedding = "ollama/bge-m3";
 };
 ```
 
-Then `pqa -s papers index <folder>` once, and `pqa-evidence -s papers "<query>"` for every question: it returns the passages PaperQA2 retrieved, untouched, and the agent reasons over them, since a local model retrieves well and reasons less well. `pqa -s papers ask "…"` has the local model answer instead, in about a minute of GPU time. Which models to pick and why, the commands, and the three settings that make `ask` work on Ollama at all are in [references/paperqa.md](references/paperqa.md)
+Then `pqa -s papers index <folder>` once, and `pqa-evidence -s papers "<query>"` for every question: it returns the passages PaperQA2 retrieved, untouched, and the agent reasons over them, since a local model retrieves well and reasons less well. `pqa -s papers ask "…"` has the local model answer instead, in about a minute of GPU time. Which models run by default and how to change them, the commands, and the settings that make `ask` work on Ollama at all are in [references/paperqa.md](references/paperqa.md)
 
 ## Notes in a vault
 
@@ -156,7 +154,7 @@ nix develop -c ./check.sh
 nix flake check
 ```
 
-`check.sh` is the gate CI runs: the scripts lint, the workflows are valid and pinned, the vendored checkers still match their lock, `SKILL.md` loads and every reference and link resolves, the changelog obeys its rules, and every MCP tool, argument and source the documents name is one the packaged server actually advertises. Each check is proven able to fail on a planted defect during the same run. `nix flake check` builds the package and starts the server once, offline
+`check.sh` is the gate CI runs: the scripts lint, the workflows are valid and pinned, the vendored checkers still match their lock, `SKILL.md` loads and every reference and link resolves, the changelog obeys its rules, every MCP tool and argument the documents name is one the packaged server advertises, and every source they route to is one its CLI lists. The vendored checkers and the document checks are each proven able to fail on a planted defect during the same run; the linters are trusted to fail. `nix flake check` builds the packages and asks each one for its help, offline
 
 ## Layout
 
@@ -165,8 +163,8 @@ SKILL.md              what the agent loads: modes, the reading subagent's contra
 references/           sources by area, the reader prompt, the digest template, the profile, the corpus mode
 nix/                  package.nix for paper-search-mcp, paperqa/ with PaperQA2's lock, home-module.nix for Home Manager
 flake.nix             packages, the module, the overlay, the dev shell and the checks
+tools/evidence.py     pqa-evidence: PaperQA2's retrieval without its answer model
 tests/mcp-tools.py    asks a stdio MCP server what tools it has and what arguments each takes
-tests/doc-args.py     finds the arguments the documents give each tool; check.sh holds them to the server's
 check.sh              the gate, self-tested against planted defects
 check-*.sh            vendored checkers, kept byte-equal to their source by vendor-sync.sh
 WORKAROUNDS.md        what exists only because something upstream is broken, and how to tell when it can go

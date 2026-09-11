@@ -28,7 +28,7 @@ language: ru
 1. Read the profile; a missing required field means stop and say which
 2. Read `$OBSIDIAN_VAULT_PATH/.claude/skills/<style_skill>/SKILL.md` and the preset it names, and follow them as if the skill had been loaded: a vault-local skill is offered as a skill only to sessions started under the vault
 3. Map the digest's fields onto the preset's frontmatter and body; the preset decides names, order and tags, this skill decides nothing about them
-4. Write the note into `notes_dir`, move the PDF into `attachments_dir` when the profile names one and the PDF was obtained, and link it from the note the way the preset says
+4. Write the note into `notes_dir`, copy the PDF into `attachments_dir` when the profile names one and the PDF was obtained, and link it from the note the way the preset says. Copy, never move: the download folder is also the corpus folder, and a moved PDF leaves the corpus
 5. Report the path and, when the style skill ships a linter, its verdict
 
 ## Without a profile

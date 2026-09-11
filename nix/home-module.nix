@@ -36,7 +36,9 @@ let
     ];
   };
 
-  settings = {
+  # extraSettings is merged recursively, so extraSettings.answer.evidence_k changes that one
+  # key and leaves the rest of answer as generated; a plain // would replace the whole set
+  settings = lib.recursiveUpdate {
     llm = cfg.corpus.llm;
     llm_config = route cfg.corpus.llm;
     summary_llm = cfg.corpus.llm;
@@ -72,8 +74,7 @@ let
       search_count = cfg.corpus.searchCount;
       index.paper_directory = cfg.corpus.directory;
     };
-  }
-  // cfg.corpus.extraSettings;
+  } cfg.corpus.extraSettings;
 in
 {
   options.programs.papers = {
@@ -106,7 +107,7 @@ in
       settingsName = lib.mkOption {
         type = lib.types.str;
         default = "papers";
-        description = "Name of the settings preset written under PQA_HOME, so the skill runs pqa -s <name>";
+        description = "Name of the settings preset written to ~/.pqa/settings/<name>.json, so the skill runs pqa -s <name>";
       };
 
       directory = lib.mkOption {
@@ -195,7 +196,15 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable {
+  config = lib.mkIf (cfg.enable || cfg.corpus.enable) {
+    # The corpus rides on the server's configuration, so enabling it alone would install
+    # nothing and say nothing
+    assertions = [
+      {
+        assertion = !cfg.corpus.enable || cfg.enable;
+        message = "programs.papers.corpus.enable needs programs.papers.enable as well";
+      }
+    ];
     home.packages = [
       cfg.package
     ]
@@ -206,7 +215,8 @@ in
     home.sessionVariables = lib.mkIf (cfg.envFile != null) {
       PAPER_SEARCH_MCP_ENV_FILE = cfg.envFile;
     };
-    # PQA_HOME defaults to ~/.pqa, and pqa -s NAME reads settings/NAME.json under it
+    # pqa -s NAME reads .pqa/settings/NAME.json under PQA_HOME, a HOME-like root, and under
+    # HOME when PQA_HOME is unset, which is where this writes it
     home.file.".pqa/settings/${cfg.corpus.settingsName}.json" = lib.mkIf cfg.corpus.enable {
       text = builtins.toJSON settings;
     };

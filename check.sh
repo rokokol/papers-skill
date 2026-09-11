@@ -22,8 +22,8 @@ cd "$HERE"
 
 # One source of truth for what gets linted. A second copy of this list drifts, and a
 # drifted list lies about what was checked.
-scripts=(check.sh check-skill.sh check-pins.sh check-changelog.sh vendor-sync.sh)
-docs=(SKILL.md references/sources.md references/reader.md references/digest-template.md references/profile.md references/paperqa.md)
+scripts=(check.sh check-skill.sh check-pins.sh check-changelog.sh check-interface.sh vendor-sync.sh)
+docs=(SKILL.md README.md references/*.md)
 skill_name=papers
 
 fail() {
@@ -45,7 +45,7 @@ echo "== the scripts parse and lint"
 for s in "${scripts[@]}"; do bash -n "$s"; done
 shellcheck "${scripts[@]}"
 shfmt -d -i 2 -ci "${scripts[@]}"
-python3 -m py_compile tests/mcp-tools.py tests/doc-args.py
+python3 -m py_compile tests/mcp-tools.py tools/*.py
 
 echo "== the workflows are valid, and their tools come from the lock rather than a registry"
 [[ -d .github/workflows ]] || fail ".github/workflows is missing — nothing gates this repository"
@@ -80,75 +80,66 @@ awk -v n="$max_words" 'BEGIN { for (i = 0; i <= n; i++) printf "word "; print ""
 too_long "$work/long.md" ||
   fail "the length budget passed a document over it — the check measures nothing"
 
-echo "== every MCP tool the documents name is one the packaged server advertises"
-# The documents tell a subagent which tools to call by name. A name the server does not
-# have sends the subagent to WebFetch in silence, which is the failure the skill exists to
-# prevent, so the names are checked against the server itself rather than against a list
+echo "== every MCP tool and argument the documents name is one the packaged server advertises"
+# The documents tell a subagent which tools to call, and with which arguments. A name the
+# server does not have sends the subagent to WebFetch in silence, which is the failure the
+# skill exists to prevent, and a renamed argument breaks every call while the name still
+# matches; so both are held to the server itself rather than to a list kept here. The
+# declared list is the server's own answer, a tool per line and a "tool argument" pair per
+# argument, since an argument means something only beside its tool
 python3 tests/mcp-tools.py paper-search-mcp | sort -u >"$work/tools.txt"
 [[ -s "$work/tools.txt" ]] || fail "the server advertised no tools"
-named_tools() { # named_tools FILE... -> the tool names the files call by their MCP name
-  # Upper case is allowed so the reader prompt's read_SOURCE_paper placeholder is taken
-  # whole and can be excluded by name, rather than truncated into a false finding
-  grep -ohE 'mcp__paper-search__[A-Za-z_]+' "$@" | sed 's/^mcp__paper-search__//' | sort -u
-}
-named_tools "${docs[@]}" >"$work/named.txt"
-[[ -s "$work/named.txt" ]] || fail "the documents name no MCP tool at all — the reader prompt lost its calls"
-# The reader prompt writes read_SOURCE_paper with the source as a placeholder; every source
-# that has a read tool is checked instead, in the sources check below
-grep -v '^read_SOURCE_paper$' "$work/named.txt" >"$work/named-concrete.txt" || true
-unknown=$(comm -23 "$work/named-concrete.txt" "$work/tools.txt")
-[[ -z "$unknown" ]] || fail "the documents name tools the server does not have: $(tr '\n' ' ' <<<"$unknown")"
-# And the check is awake: a document naming a tool that does not exist is caught
-printf 'call mcp__paper-search__read_everything_paper first\n' >"$work/bad-tool.md"
-named_tools "$work/bad-tool.md" >"$work/bad-named.txt"
-[[ -n "$(comm -23 "$work/bad-named.txt" "$work/tools.txt")" ]] ||
-  fail "a planted unknown tool name passed the tool check — it compares nothing"
-
-echo "== every argument the documents give a tool is one the tool takes"
-# A renamed argument leaves the tool's name alone, so the check above stays green while
-# every call the documents prescribe starts failing; the argument names are held against
-# each tool's inputSchema for the same reason the names are held against the tool list
 python3 tests/mcp-tools.py --args paper-search-mcp >"$work/args.txt"
 [[ -s "$work/args.txt" ]] || fail "the server advertised no tool arguments"
-python3 tests/doc-args.py "$work/args.txt" "${docs[@]}" ||
-  fail "the documents give tools arguments the server does not take, listed above"
-# And the check is awake in each shape a document gives arguments in: call notation, a
-# tool name with a placeholder, and the reader prompt. Exit 1 is the only catch: 2 means
-# the parser found no claim at all, which would pass a broken parser off as a catch
-# shellcheck disable=SC2016 # the backticks are the planted document's markdown
-printf '`search_papers(query, limit)`\n' >"$work/bad-call.md"
-# shellcheck disable=SC2016 # the backticks are the planted document's markdown
-printf '`read_<source>_paper(paper_id, page)`\n' >"$work/bad-placeholder.md"
-printf 'Call mcp__paper-search__download_with_fallback with sauce SOURCE\n' >"$work/bad-prompt.md"
-for bad in bad-call bad-placeholder bad-prompt; do
-  status=0
-  python3 tests/doc-args.py "$work/args.txt" "$work/$bad.md" >/dev/null || status=$?
-  ((status == 1)) || fail "a planted unknown argument in $bad.md was not caught (exit $status) — the check compares nothing"
-done
+sort -u "$work/tools.txt" "$work/args.txt" >"$work/declared.txt"
+# The ci skill's check-interface.sh, vendored. The claims it reads: an MCP name anywhere,
+# since no sentence says mcp__paper-search__ in passing; call notation; and a span that is
+# wholly a tool name. A placeholder such as read_<source>_paper or read_SOURCE_paper stands
+# for every read tool, and each must take the argument. It plants its own defects on every
+# run, in documents built from this same list
+./check-interface.sh -d "$work/declared.txt" -p mcp__paper-search__ -a -c \
+  -s '(search|read|download|get)_[A-Za-z_<>]+' "${docs[@]}"
 
 echo "== every source the documents route to is one the CLI lists, and has a read tool"
 paper-search sources 2>/dev/null | jq -r '.sources[]' | sort -u >"$work/sources.txt"
 [[ -s "$work/sources.txt" ]] || fail "the CLI listed no sources"
-# The routing tables name sources in backticks; scholar and the fallback connectors are
-# named by the server too, so the list is the CLI's own
-named_sources() { # named_sources FILE -> the backticked lowercase words that are sources
+sort -u "$work/sources.txt" "$work/tools.txt" >"$work/known.txt"
+# The routing columns of references/sources.md — Primary and Secondary of the area table,
+# Source of the identifier table — hold sources in backticks, and here and there a tool,
+# such as search_papers for a bare title. Every word there must be one or the other: the
+# words are taken from the columns rather than filtered by the CLI's list, which is what let
+# a made-up source through before
+routed() { # routed FILE -> the backticked words in its routing columns
   # shellcheck disable=SC2016 # the backticks are the documents' own markdown, not a subshell
-  grep -oE '`[a-z_]+`' "$1" | tr -d '`' | sort -u | comm -12 - "$work/sources.txt"
+  awk -F '|' '/^\| Area \|/ { t = 1; next } /^\| The user gives \|/ { t = 2; next }
+    !/^\|/ { t = 0 } /^\|---/ { next } t == 1 { print $3, $4 } t == 2 { print $3 }' "$1" |
+    grep -oE '`[a-z_]+`' | tr -d '`' | sort -u
 }
-named_sources references/sources.md >"$work/named-sources.txt"
-(($(wc -l <"$work/named-sources.txt") >= 8)) ||
-  fail "references/sources.md names fewer than 8 known sources — the routing tables were lost"
-# Every source the identifier table routes a read to must have a read_<source>_paper tool;
-# pmc and europepmc are deliberately absent, the table sends their ids through pubmed
-for source in arxiv pubmed biorxiv medrxiv semantic crossref openalex; do
+routed references/sources.md >"$work/routed.txt"
+[[ -s "$work/routed.txt" ]] || fail "no routing column was read from references/sources.md — its tables moved"
+unknown=$(comm -23 "$work/routed.txt" "$work/known.txt")
+[[ -z "$unknown" ]] || fail "references/sources.md routes to what the CLI and the server do not have: $(tr '\n' ' ' <<<"$unknown")"
+# And the check is awake: a routing table naming a made-up source beside a real one is caught
+printf "| Area | Primary | Secondary | Notes |\n|---|---|---|---|\n| x | \`nowhere\`, \`arxiv\` | \`openalex\` | n |\n" >"$work/bad-source.md"
+[[ "$(routed "$work/bad-source.md" | comm -23 - "$work/known.txt")" == nowhere ]] ||
+  fail "a routing table naming the made-up source nowhere passed the source check — it compares nothing"
+# A subagent reads with read_SOURCE_paper, and the reader prompt's SOURCE row lists the
+# values it may take; each must have a read tool. The row, not a list kept here, is the
+# source of that set, so a value added to it is checked the day it is added
+read_sources() { # read_sources FILE -> the lowercase values its SOURCE row offers
+  # shellcheck disable=SC2016 # the backticks are the documents' own markdown, not a subshell
+  grep -E '^\| `SOURCE` \|' "$1" | grep -oE '`[a-z]+`' | tr -d '`' | sort -u
+}
+read_sources references/reader.md >"$work/read-sources.txt"
+[[ -s "$work/read-sources.txt" ]] || fail "references/reader.md offers no SOURCE value — its table moved"
+while read -r source; do
   grep -qx "read_${source}_paper" "$work/tools.txt" ||
-    fail "the identifier table routes reads to $source, but the server has no read_${source}_paper"
-done
-# And the check is awake: a routing table that names a made-up source is caught, because
-# the made-up name is not in the CLI's list and so falls out of the intersection
-# shellcheck disable=SC2016 # the backticks are the planted document's markdown
-printf 'route it to `nowhere` and `arxiv`\n' >"$work/bad-source.md"
-[[ "$(named_sources "$work/bad-source.md" | tr '\n' ' ')" == "arxiv " ]] ||
-  fail "the source filter kept a source the CLI does not list — it filters nothing"
+    fail "references/reader.md offers SOURCE $source, but the server has no read_${source}_paper"
+done <"$work/read-sources.txt"
+# And that check is awake: a SOURCE row offering a source with no read tool is caught
+printf "| \`SOURCE\` | one of \`arxiv\`, \`nowhere\` |\n" >"$work/bad-read.md"
+read_sources "$work/bad-read.md" >"$work/bad-read-sources.txt"
+missing_read=$(while read -r source; do grep -qx "read_${source}_paper" "$work/tools.txt" || echo "$source"; done <"$work/bad-read-sources.txt")
+[[ "$missing_read" == nowhere ]] || fail "a SOURCE row offering nowhere passed the read-tool check — it compares nothing"
 
 echo "check: green"

@@ -19,6 +19,7 @@
 # is a state it can never be in, so the section would never close.
 #
 # Exit: 0 clean, 1 findings printed, 2 a usage error.
+# Nothing here reaches the network. Needs bash 3.2 and POSIX tools only.
 set -uo pipefail
 
 # The help is the header comment above, whole: it ends where the first non-comment line

@@ -5,15 +5,22 @@ Usage: mcp-tools.py [--args] SERVER_COMMAND [ARG...]
 
 Speaks the JSON-RPC handshake the MCP protocol requires (initialize, the initialized
 notification, tools/list) over the server's stdin and stdout, and prints the names in the
-order the server lists them. With --args it prints one "tool argument" line per argument
-in each tool's inputSchema instead, so a caller can check argument names too. The server's log lines on stderr are dropped; a stdout line
-that is not JSON is skipped, since some servers print a banner before speaking the protocol.
-Exit 1 when the server never answers tools/list, so a caller reading an empty list is told.
+order the server lists them, following nextCursor until the last page. With --args it
+prints one "tool argument" line per argument in each tool's inputSchema instead, so a
+caller can check argument names too. The server's log lines on stderr are dropped; a
+stdout line that is not JSON is skipped, since some servers print a banner before speaking
+the protocol, and so is any message that is not the reply to the request just sent, such
+as a notification the server volunteers.
+
+Exit 1 when the server never answers, or answers with an error, so a caller reading an
+empty list is told; 2 on a usage error.
 """
 
 import json
 import subprocess
 import sys
+
+TIMEOUT = 60
 
 
 def main(argv: list[str]) -> int:
@@ -33,45 +40,63 @@ def main(argv: list[str]) -> int:
     )
     stdin, stdout = proc.stdin, proc.stdout
     assert stdin is not None and stdout is not None
+    next_id = 0
 
     def send(message: dict) -> None:
         stdin.write(json.dumps(message) + "\n")
         stdin.flush()
 
-    def receive() -> dict | None:
+    def request(method: str, params: dict) -> dict | None:
+        """Send a request and return its reply, skipping every other line the server writes"""
+        nonlocal next_id
+        next_id += 1
+        send({"jsonrpc": "2.0", "id": next_id, "method": method, "params": params})
         while True:
             line = stdout.readline()
             if not line:
                 return None
             try:
-                return json.loads(line)
+                message = json.loads(line)
             except json.JSONDecodeError:
                 continue
+            if isinstance(message, dict) and message.get("id") == next_id:
+                return message
 
-    send(
+    def stop() -> None:
+        stdin.close()
+        try:
+            proc.wait(timeout=TIMEOUT)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+
+    reply = request(
+        "initialize",
         {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {"name": "mcp-tools", "version": "0"},
-            },
-        }
+            "protocolVersion": "2024-11-05",
+            "capabilities": {},
+            "clientInfo": {"name": "mcp-tools", "version": "0"},
+        },
     )
-    if receive() is None:
+    if reply is None or "result" not in reply:
+        stop()
         print("mcp-tools: the server did not answer initialize", file=sys.stderr)
         return 1
     send({"jsonrpc": "2.0", "method": "notifications/initialized"})
-    send({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
-    reply = receive()
-    stdin.close()
-    proc.wait(timeout=30)
-    if reply is None or "result" not in reply:
-        print("mcp-tools: the server did not answer tools/list", file=sys.stderr)
-        return 1
-    for tool in reply["result"]["tools"]:
+    tools: list[dict] = []
+    cursor = None
+    while True:
+        reply = request("tools/list", {"cursor": cursor} if cursor else {})
+        if reply is None or "result" not in reply:
+            stop()
+            print("mcp-tools: the server did not answer tools/list", file=sys.stderr)
+            return 1
+        tools.extend(reply["result"].get("tools", []))
+        cursor = reply["result"].get("nextCursor")
+        if not cursor:
+            break
+    stop()
+    for tool in tools:
         if with_args:
             for argument in tool.get("inputSchema", {}).get("properties", {}):
                 print(tool["name"], argument)

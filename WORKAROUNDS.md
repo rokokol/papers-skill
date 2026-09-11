@@ -21,12 +21,14 @@ Rules for this file: one entry per workaround, and every entry carries a mechani
 **Removal check:**
 
 ```sh
-# non-zero once the latest PyPI release ships the fix: then bump version and hash in
-# nix/package.nix to that release, and drop patches and this entry
+# prints a count above 0 once the latest PyPI release ships the fix: then bump version and
+# hash in nix/package.nix to that release, and drop patches and this entry. It fails
+# rather than printing 0 when the sdist has no semantic.py, since a renamed module is not
+# the same answer as an unfixed one
 # (Python rather than jq and tar: GNU tar needs --wildcards here, and bsdtar rejects it)
 v=$(curl -s https://pypi.org/pypi/paper-search-mcp/json | python3 -c 'import json, sys; print(json.load(sys.stdin)["info"]["version"])')
 curl -s "https://pypi.org/pypi/paper-search-mcp/$v/json" \
   | python3 -c 'import json, sys; print(next(u["url"] for u in json.load(sys.stdin)["urls"] if u["packagetype"] == "sdist"))' \
   | xargs curl -sL \
-  | python3 -c 'import sys, tarfile; t = tarfile.open(fileobj=sys.stdin.buffer, mode="r|gz"); print(sum(t.extractfile(m).read().count(b"SemanticScholarRequestError") for m in t if m.name.endswith("/academic_platforms/semantic.py")))'
+  | python3 -c 'import sys, tarfile; t = tarfile.open(fileobj=sys.stdin.buffer, mode="r|gz"); c = [t.extractfile(m).read().count(b"SemanticScholarRequestError") for m in t if m.name.endswith("/academic_platforms/semantic.py")]; sys.exit("no academic_platforms/semantic.py in the sdist") if not c else print(sum(c))'
 ```
