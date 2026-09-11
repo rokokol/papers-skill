@@ -7,10 +7,11 @@ Kept in the shape of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), d
 ### Changed
 
 - the corpus preset turns PaperQA2's doc details off (`parsing.use_doc_details`), so `pqa index` no longer asks the model for a structured citation of each paper or Semantic Scholar and Crossref for its metadata; `programs.papers.corpus.docDetails` turns it back on. With it on, one Semantic Scholar 429 ended the whole index with exit 1 and left the paper marked failed in that index for good; `references/paperqa.md` says how to spot such a paper and retry it
+- the repository-wide workaround record follows the maintainer-document convention as `WORKAROUNDS.md` and is linked from a header badge
 
 ### Fixed
 
-- `search_papers` reports a Semantic Scholar refusal (rate limited, an HTTP error, a network error) under `errors["semantic"]` instead of answering zero results for it, and `search_semantic` fails instead of returning an empty list: the packaged `paper-search-mcp` carries the fix from openags/paper-search-mcp#111 until a release does, as `workarounds.md` records
+- `search_papers` reports a Semantic Scholar refusal (rate limited, an HTTP error, a network error) under `errors["semantic"]` instead of answering zero results for it, and `search_semantic` fails instead of returning an empty list: the packaged `paper-search-mcp` carries the fix from openags/paper-search-mcp#111 until a release does, as `WORKAROUNDS.md` records
 
 ### Removed
 

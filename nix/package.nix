@@ -21,7 +21,7 @@ python3Packages.buildPythonApplication rec {
     hash = "sha256-NQGmJYQMqzQQ6ZDi8t9RvULKcwCHJFi/1Ev2vx8RiPg=";
   };
 
-  # A stopgap until a release carries it; see workarounds.md for what it fixes and when it goes
+  # A stopgap until a release carries it; see WORKAROUNDS.md for what it fixes and when it goes
   patches = [
     (fetchpatch {
       url = "https://github.com/openags/paper-search-mcp/commit/f3c0d8260992ed8b5f1a4c186a81ad05b2c77a37.patch";

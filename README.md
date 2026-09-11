@@ -8,6 +8,7 @@
 ![MCP](https://img.shields.io/badge/MCP-000000?style=flat)
 ![Nix](https://img.shields.io/badge/Nix-5277C3?style=flat&logo=nixos&logoColor=white)
 ![Bash](https://img.shields.io/badge/Bash-4EAA25?style=flat&logo=gnubash&logoColor=white)
+[![workarounds](https://img.shields.io/badge/docs-workarounds-555?style=flat)](WORKAROUNDS.md)
 [![license](https://img.shields.io/badge/MIT-3DA639?style=flat)](LICENSE)
 [![ci](https://github.com/rokokol/papers-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/rokokol/papers-skill/actions/workflows/ci.yml)
 [![macos](https://github.com/rokokol/papers-skill/actions/workflows/macos.yml/badge.svg)](https://github.com/rokokol/papers-skill/actions/workflows/macos.yml)
@@ -168,5 +169,5 @@ tests/mcp-tools.py    asks a stdio MCP server what tools it has and what argumen
 tests/doc-args.py     finds the arguments the documents give each tool; check.sh holds them to the server's
 check.sh              the gate, self-tested against planted defects
 check-*.sh            vendored checkers, kept byte-equal to their source by vendor-sync.sh
-workarounds.md        what exists only because something upstream is broken, and how to tell when it can go
+WORKAROUNDS.md        what exists only because something upstream is broken, and how to tell when it can go
 ```
