@@ -2,6 +2,12 @@
 
 Kept in the shape of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), dated rather than numbered, and with no `Unreleased` section — this repository is read at whatever revision you have checked out, so whatever is on the default branch is what every reader already has
 
+## 2026-09-11
+
+### Changed
+
+- the corpus preset turns PaperQA2's doc details off (`parsing.use_doc_details`), so `pqa index` no longer asks the model for a structured citation of each paper or Semantic Scholar and Crossref for its metadata; `programs.papers.corpus.docDetails` turns it back on. With it on, one Semantic Scholar 429 ended the whole index with exit 1 and left the paper marked failed in that index for good; `references/paperqa.md` says how to spot such a paper and retry it
+
 ## 2026-09-10
 
 ### Added

@@ -59,6 +59,10 @@ let
     # it is routed too: left at its default it is an OpenAI model and fails without a key
     parsing = {
       multimodal = if cfg.corpus.multimodal then 1 else 0;
+      # Doc details are one more model call per paper for a structured citation, then
+      # Semantic Scholar and Crossref for its metadata; an anonymous Semantic Scholar 429
+      # there ended the whole index with exit 1, and retrieval needs none of it
+      use_doc_details = cfg.corpus.docDetails;
       enrichment_llm = cfg.corpus.llm;
       enrichment_llm_config = route cfg.corpus.llm;
     };
@@ -175,6 +179,12 @@ in
         type = lib.types.bool;
         default = false;
         description = "Parse figures and tables too and have the model caption each one at index time; off keeps indexing to text and seconds per paper";
+      };
+
+      docDetails = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Look up each paper's metadata (DOI, venue, citation count) at index time; off keeps indexing off the network and keeps the citation the model reads off the first chunk";
       };
 
       extraSettings = lib.mkOption {
