@@ -139,6 +139,7 @@
           pkgs.runCommand "paper-qa-smoke"
             {
               nativeBuildInputs = [ self.packages.${pkgs.stdenv.hostPlatform.system}.paper-qa ];
+              LITELLM_LOCAL_MODEL_COST_MAP = "True";
             }
             ''
               export HOME=$TMPDIR
