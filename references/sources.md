@@ -39,7 +39,7 @@ A paper reachable by several identifiers is read once, through the source most l
 `read_<source>_paper(paper_id, save_path)` downloads and extracts the text in one call and returns it as the tool result, which is why only the reading subagent calls it. When it fails or returns a stub:
 
 1. `download_with_fallback(source, paper_id, doi, title, save_path)` tries the source, open repositories, Unpaywall, and then Sci-Hub when `use_scihub` is left on; pass the DOI and the title so the fallbacks have something to match. The Sci-Hub step is upstream's default and a choice for the owner of the installation, not for this skill; set `use_scihub: false` when the user says so
-2. The PDF at `save_path` is read with the `Read` tool, in the subagent
+2. The PDF at `save_path` is read with the harness's file-reading capability, in the subagent
 
 ## Keys and limits
 
@@ -57,9 +57,8 @@ The services' own rules still apply behind the server: arXiv asks for one reques
 
 ## Known pitfalls
 
-- **arXiv hangs on multi-word queries without quotes** (upstream #101): quote a phrase, or search Semantic Scholar first and read from arXiv by id
-- **Google Scholar is a scraper** with roughly ten queries per session before it blocks (#74); it is never the first source and never the only one
-- **`download_with_fallback` reaches Sci-Hub by default** (#103); say so when reporting where a PDF came from. In practice that rung yields nothing: the mirror the server assumes, sci-hub.se, no longer resolves, and the mirrors that answer put a captcha in front of every DOI page, which the scraper cannot pass (measured 2026-09-10). What actually finds a paywalled paper's copy is the open-repository rung, and it matches on `title`, so pass the title, never an empty string
-- **The server crashes at startup under mcp SDK 2.x** (#107) when installed from PyPI without a pin; the packaged binary in this repository is built against the 1.x SDK and does not
+- **arXiv hangs on multi-word queries without quotes**: quote a phrase, or search Semantic Scholar first and read from arXiv by id
+- **Google Scholar is a scraper** with a low session limit before it blocks; it is never the first source and never the only one
+- **`download_with_fallback` reaches Sci-Hub by default**; say so when reporting where a PDF came from. That rung may be unavailable or blocked by a captcha, while the open-repository rung matches on `title`, so pass the title rather than an empty string
 - **A `read_*` result can be an abstract**: PubMed without PMC access, Crossref for a paywalled journal, SSRN. The digest's last field exists to say so
 - **The default `save_path` is `./downloads`**, relative to the process's working directory; always pass one

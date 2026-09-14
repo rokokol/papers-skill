@@ -1,6 +1,6 @@
 # The reading subagent
 
-The master spawns it with the `Agent` tool, `subagent_type: general-purpose`, the explicit `model` [SKILL.md](../SKILL.md#setup) prescribes, and the prompt below with the placeholders filled. One paper per subagent; a review spawns several, one at a time by default
+The master spawns one isolated-context reader with the explicit model policy [SKILL.md](../SKILL.md#runtime) prescribes and the prompt below with the placeholders filled. One paper per subagent; a review spawns several, one at a time by default
 
 ## Prompt
 
@@ -14,15 +14,15 @@ Digest template, read it first and follow its fields and bounds exactly: TEMPLAT
 Language of the digest: LANGUAGE
 
 Obtain the text with the ladder below. Stop at the first rung that yields the full text; a rung that errors or returns only an abstract hands over to the next.
-1. Load the tools by exact name: ToolSearch with query "select:mcp__paper-search__read_SOURCE_paper,mcp__paper-search__download_with_fallback" and max_results 2. Then call mcp__paper-search__read_SOURCE_paper with paper_id PAPER_ID and save_path SAVE_PATH
-2. Call mcp__paper-search__download_with_fallback with source SOURCE, paper_id PAPER_ID, save_path SAVE_PATH, use_scihub USE_SCIHUB, and doi and title when they are given below and are not "unknown"; then open the PDF it saved with the Read tool
-3. Only when ToolSearch found no paper-search tools at all: run `paper-search read SOURCE PAPER_ID -o SAVE_PATH` in Bash and read its output
+1. Discover the exact callable name corresponding to read_SOURCE_paper in the harness's tool catalog, then call it with paper_id PAPER_ID and save_path SAVE_PATH
+2. If that did not yield full text, discover and call download_with_fallback with source SOURCE, paper_id PAPER_ID, save_path SAVE_PATH, use_scihub USE_SCIHUB, and doi and title when they are given below and are not "unknown"; then open the saved PDF with the harness's file-reading capability
+3. Only when no paper-search tools are available: run `paper-search read SOURCE PAPER_ID -o SAVE_PATH` through the shell and read its output
 If a rung yielded only the abstract and the rest yielded nothing, write the digest from the abstract and say so in the last field. If every rung errored and no text at all was obtained, return only one line, "could not read PAPER_ID: <the last error>", and nothing else.
 DOI: DOI
 Title: TITLE
 
 Rules:
-- Use only the paper-search tools and the Read tool on the file they saved. WebFetch, WebSearch and any browser tool are off limits: a digest built from an abstract page is indistinguishable in shape from one built from the paper
+- Use only the paper-search tools and the file-reading capability on the file they saved. General web fetch, search and browser tools are off limits: a digest built from an abstract page is indistinguishable in shape from one built from the paper
 - Return the digest and nothing else: no raw text, no outline, no quotation longer than one sentence
 - Every number in the digest comes from the paper; when the paper gives none, say "no numbers reported" rather than estimating
 - Distinguish what the paper claims from what it shows; a result on one benchmark is not a general claim

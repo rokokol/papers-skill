@@ -8,12 +8,12 @@ license: MIT
 
 Scientific papers are long and PDFs are worse: the text of one paper is a large fraction of a conversation's context, and a survey is several of them. This skill keeps the reading out of the main conversation. The master finds and decides; a subagent with its own context reads and returns a digest of bounded length; the master synthesises across digests and, only when the user says so, files one as a note
 
-## Setup
+## Runtime
 
-- **Sources** come from [paper-search-mcp](https://github.com/openags/paper-search-mcp) in one of two forms. As an MCP server registered under a name (assumed `paper-search` below) its tools are `mcp__paper-search__*`; they are deferred, so before the first call run `ToolSearch` with `select:` and the exact names about to be called, in the subagent as well as in the master: the server has dozens of tools and a keyword query returns only the first few, so the one needed is often not among them. As a CLI, `paper-search search|download|read|sources` prints JSON or text. Prefer the MCP where it is registered: `download_with_fallback` and the per-source `read_*_paper` tools exist only there. Check availability once per session: `ToolSearch` finds the tools, or `command -v paper-search` finds the binary; neither means stop and point at [README.md](README.md)
+- **Sources** come from [paper-search-mcp](https://github.com/openags/paper-search-mcp) as an MCP server or the `paper-search` CLI. MCP clients assign their own namespace, so discover the callable names corresponding to `search_papers`, `read_SOURCE_paper` and `download_with_fallback` from the harness's tool catalog rather than spelling a client-specific prefix. Prefer MCP when available because the fallback downloader and per-source readers exist only there; otherwise `paper-search search|download|read|sources` prints JSON or text. Check availability once per session through the tool catalog or `command -v paper-search`; when neither exists, report the missing capability and stop rather than inventing a citation
 - **Keys** are optional and never pass through the conversation: the server reads an env file named by `PAPER_SEARCH_MCP_ENV_FILE` or `~/.config/paper-search-mcp/.env`. Without them Semantic Scholar shares an anonymous rate limit, CORE fails often and Unpaywall is skipped, which is the legal open-access fallback; [references/sources.md](references/sources.md#keys-and-limits) names the variables
 - **Downloads** go to one place, `~/.cache/papers/`, passed as `save_path` on every call; the default `./downloads` litters whatever directory the session happens to be in
-- **Subagents** always get an explicit `model`, `sonnet` unless the user names another, and are told not to spawn subagents of their own. Reading is delegated; judgement is not
+- **Subagents** use an isolated context and an explicitly selected, balanced reading model unless the user names another. If the launcher exposes no model selector, state that constraint before delegating. Tell every reader not to spawn subagents of its own. Reading is delegated; judgement is not
 
 ## Modes
 
@@ -34,7 +34,7 @@ Say which mode you are in. A request usually chains them: `search` → `read` �
 One paper, one subagent, one digest. The contract is what makes the mode cheap, so it is not softened:
 
 - The subagent gets the identifier, the user's question, the save path, the path of the digest template, and the rules in [references/reader.md](references/reader.md); it reads the template itself
-- It calls `read_<source>_paper` first; when that fails it calls `download_with_fallback` and reads the PDF with the `Read` tool; when the CLI is the only path it runs `paper-search read <source> <id> -o <save_path>`
+- It calls `read_<source>_paper` first; when that fails it calls `download_with_fallback` and reads the PDF with the harness's file-reading capability; when the CLI is the only path it runs `paper-search read <source> <id> -o <save_path>`
 - It returns the digest and nothing else: no raw text, no quotes longer than a sentence, no table of contents. The one exception is a single sentence naming what it could not read
 - It states, in the digest's last field, what it actually read: full text, or abstract only, or a truncated extraction
 - It never spawns subagents, never writes outside the save path, never touches the vault
@@ -65,16 +65,3 @@ One paper, one subagent, one digest. The contract is what makes the mode cheap, 
 | The digest's fields and bounds | [references/digest-template.md](references/digest-template.md) |
 | The profile a vault owner writes so notes land in their style and folder | [references/profile.md](references/profile.md) |
 | The corpus mode: PaperQA2's preset, folder, commands and limits | [references/paperqa.md](references/paperqa.md) |
-
-## Layout
-
-```
-SKILL.md              this file — setup, modes, the subagent contract, the never list
-references/           sources, reader prompt, digest template, profile schema, the corpus mode
-nix/                  the paper-search-mcp package, the locked PaperQA2 environment, the Home Manager module
-flake.nix             packages, the module, the dev shell and checks
-tools/                evidence.py, behind pqa-evidence: PaperQA2's retrieval without its answer model
-check.sh              this repo's own gate
-```
-
-Installation, the MCP registration, the Nix module and the profile format live in [README.md](README.md), which is written for people; nothing there is needed while searching or reading
