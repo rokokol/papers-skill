@@ -6,7 +6,7 @@
 # in the repository notices. Then it proves each of its checks able to fail, on planted
 # documents built from the same declared list, every time it runs.
 #
-#   check-interface.sh -d FILE [-p PREFIX]... [-a] [-b] [-c] [-s ERE] [-f] DOC...
+#   check-interface.sh -d FILE [-r FILE] [-p PREFIX]... [-a] [-b] [-c] [-s ERE] [-f] DOC...
 #
 #   -d FILE    what the tool declares: one name per line, or a name and one argument it
 #              takes per line. A name `*` gives its arguments to every name, and an
@@ -25,6 +25,11 @@
 #   -s ERE     a code span that is wholly a name matching ERE is a claim to that name
 #   -f         a bare lowercase word after a prefixed name is an argument, as a CLI's
 #              flags are
+#   -r FILE    names the tool declared before, in the format of -d. One that is there and
+#              not in -d was renamed or removed, and a claim opening with it is a finding in
+#              every notation — under -b too, where an undeclared first word is otherwise
+#              prose, so a renamed command in a bare span is caught the day the declaration
+#              drops it. The calling gate makes the file, from the declarations it recorded
 #
 # An argument is read as `key=value`, as `key VALUE` where VALUE is an upper-case or
 # <angled> placeholder, and with -f as a bare word after a prefix. A claim ends at a shell operator, at
@@ -57,7 +62,7 @@ fail() {
 }
 
 self=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/$(basename -- "${BASH_SOURCE[0]}")
-declared="" prefixes="" first_prefix="" whole=""
+declared="" retired="" prefixes="" first_prefix="" whole=""
 anywhere=0 bare=0 calls=0 flags=0
 # Every notation flag again, for the runs on planted documents
 opts=()
@@ -67,6 +72,11 @@ while (($#)); do
       # Not ${2:?}: that exits 1 with bash's own message, and a usage error is exit 2
       (($# >= 2)) || die "-d needs a file"
       declared=$2
+      shift 2
+      ;;
+    -r)
+      (($# >= 2)) || die "-r needs a file"
+      retired=$2
       shift 2
       ;;
     -p)
@@ -121,6 +131,8 @@ done
 
 [[ -n "$declared" ]] || die "-d FILE is required: the interface the tool declares"
 [[ -f "$declared" && -r "$declared" ]] || die "$declared is not a readable file"
+# An empty -r is fine: until the tool drops a name there is nothing it once declared
+[[ -z "$retired" || (-f "$retired" && -r "$retired") ]] || die "$retired is not a readable file"
 (($#)) || die "no document to check"
 for doc in "$@"; do
   [[ -f "$doc" && -r "$doc" ]] || die "$doc is not a readable file"
@@ -188,7 +200,10 @@ function claim(text, strict,   name, rest, n, args, na, a, toks, nt, i, t, last)
   rest = substr(text, RLENGTH + 1)
   n = resolve(name)
   if (n == 0) {
-    if (strict) {
+    if (was_declared(name)) {
+      claims++
+      finding(name " is no longer declared")
+    } else if (strict) {
       claims++
       if (index(pattern_of(name), "\001")) finding(name " fits no declared name")
       else finding(name " is not a declared name")
@@ -234,7 +249,7 @@ function claim(text, strict,   name, rest, n, args, na, a, toks, nt, i, t, last)
   }
 }
 # A code span or a fenced line: a claim can only open it
-function opening(s, fenced,   i, p) {
+function opening(s, fenced,   i, p, w) {
   for (i = 1; i <= np; i++) {
     p = pre[i]
     if (p != "" && substr(s, 1, length(p)) == p) {
@@ -251,7 +266,14 @@ function opening(s, fenced,   i, p) {
     claim(s, 1)
     return
   }
-  if (bare && match(s, /^[A-Za-z0-9_:-]+/) && (substr(s, 1, RLENGTH) in declared)) claim(s, 0)
+  if (bare && match(s, /^[A-Za-z0-9_:-]+/)) {
+    w = substr(s, 1, RLENGTH)
+    if ((w in declared) || was_declared(w)) claim(s, 0)
+  }
+}
+# A name the tool declared before and declares no more: renamed or removed
+function was_declared(name) {
+  return (name in was) && !(name in declared)
 }
 # Anywhere in a line, for -a: the prefix must not continue a longer word
 function inside(s,   i, p, k, rest) {
@@ -270,6 +292,13 @@ BEGIN {
   np = split(ENVIRON["CHECK_INTERFACE_PREFIXES"], pre, "\n")
   whole = ENVIRON["CHECK_INTERFACE_WHOLE"]
   claims = 0
+  if (retired_file != "") {
+    while ((getline line < retired_file) > 0) {
+      split(line, field, " ")
+      if (field[1] != "" && field[1] !~ /^#/ && field[1] != "*") was[field[1]] = 1
+    }
+    close(retired_file)
+  }
 }
 FNR == NR {
   if (NF == 0 || $1 ~ /^#/) next
@@ -312,7 +341,7 @@ AWK
 scan() { # scan DOC... -> the F and C lines for these documents
   CHECK_INTERFACE_PREFIXES=$prefixes CHECK_INTERFACE_WHOLE=$whole \
     awk -v anywhere="$anywhere" -v bare="$bare" -v calls="$calls" -v flags="$flags" \
-    "$(awk_program)" "$declared" "$@"
+    -v retired_file="$retired" "$(awk_program)" "$declared" "$@"
 }
 
 out=$(scan "$@") || die "awk could not read the documents"
@@ -422,6 +451,25 @@ if [[ -n "$whole" ]]; then
 fi
 if ((flags)); then
   plant 1 "$name takes no $wrong" "\`$first_prefix$name $wrong\`"
+fi
+if [[ -n "$retired" ]] && ((nnames > 1)); then
+  # The tool drops a name: the list without it is the declaration, the list with it the
+  # earlier one, and a claim still opening with it must be named in every notation read —
+  # a bare span included, where an undeclared first word is otherwise taken for prose
+  awk -v n="$name" '$1 != n' "$declared" >"$work/now.txt"
+  printf '%s\n' "$name" >"$work/was.txt"
+  plant_retired() { # plant_retired LINE — a document of this one line must name the dropped name
+    local got=0 said
+    printf '%s\n' "$1" >"$work/planted.md"
+    said=$(CHECK_INTERFACE_PLANTED=1 "$BASH" "$self" -d "$work/now.txt" -r "$work/was.txt" ${opts[@]+"${opts[@]}"} "$work/planted.md" 2>&1) || got=$?
+    if ((got != 1)) || ! grep -qF -- "$name is no longer declared" <<<"$said"; then
+      fail "a name the tool dropped passed in \`$1\` (exit $got):"$'\n'"$said"
+    fi
+    planted=$((planted + 1))
+  }
+  if [[ -n "$first_prefix" ]]; then plant_retired "\`$first_prefix$name\`"; fi
+  if ((calls)); then plant_retired "\`$name($arg)\`"; fi
+  if ((bare)); then plant_retired "\`$name\`"; fi
 fi
 
 echo "check-interface: $claims claims in $# documents hold against $nnames declared names, $planted planted cases behave"

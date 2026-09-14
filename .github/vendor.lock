@@ -6,4 +6,4 @@ vendor-sync.sh rokokol/ci-skill templates/vendor-sync.sh e3b34f0104278c1adb9aad8
 check-pins.sh rokokol/ci-skill templates/check-pins.sh 42d8ed275977a210e5de961a677a476decfaedaa e259b35eb552b43fe92582c708f4d870e5f012d6
 check-skill.sh rokokol/ci-skill templates/check-skill.sh 42d8ed275977a210e5de961a677a476decfaedaa 98f086224ffc3e9717925589d48e6f3827fb0adb
 check-changelog.sh rokokol/versioning-skill check-changelog.sh e8254f7332cc874b6b3ad5846b03e0e08ea834b9 4be313991ed7928eb4c81f8f697a3d375ad50b82
-check-interface.sh rokokol/ci-skill templates/check-interface.sh e3b34f0104278c1adb9aad87073740e6f9b70dc8 2806507f610b4ffb72b0c06f39fcdd50a095e43d
+check-interface.sh rokokol/ci-skill templates/check-interface.sh 183a9170fa2a1b648291fd75dfec372f802f5a20 75c6f3fcf8c15906a6169ec49bcf0e243e47db69
