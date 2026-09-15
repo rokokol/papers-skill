@@ -1,69 +1,72 @@
 #!/usr/bin/env bash
-# Hold a skill's documents to the interface a foreign tool declares about itself: the
-# commands of a CLI as its own help lists them, the tools and arguments an MCP server
-# advertises, the fields an API accepts. When the tool renames one, a document that still
-# teaches the old name teaches an agent to call something that does not exist, and nothing
-# in the repository notices. Then it proves each of its checks able to fail, on planted
-# documents built from the same declared list, every time it runs.
-#
-#   check-interface.sh -d FILE [-r FILE] [-x FILE] [-p PREFIX]... [-a] [-b] [-c] [-s ERE] [-f] DOC...
-#
-#   -d FILE    what the tool declares: one name per line, or a name and one argument it
-#              takes per line. A name `*` gives its arguments to every name, and an
-#              argument written <like-this> is a positional value, so bare words after
-#              that name are values rather than flags. How the list is made is the calling
-#              gate's own line: an MCP handshake, `tool help | awk …`, a recorded snapshot
-#   -p PREFIX  a claim opens with PREFIX at the start of a code span, or of a line in a
-#              fenced block after an optional `$ `: `PREFIX NAME key=… flag`; repeatable
-#   -a         PREFIX opens a claim anywhere in a line, prose included — for a prefix no
-#              sentence uses in passing, such as the full name of an MCP tool
-#   -b         a code span that opens with a declared name is a claim too; an undeclared
-#              first word there is taken for prose, and so are its bare words, which may
-#              be quoted output or a shell line as easily as flags, so only its `key=`
-#              arguments are held
-#   -c         a code span in call notation, `NAME(arg, arg=…, …)`, is a claim
-#   -s ERE     a code span that is wholly a name matching ERE is a claim to that name
-#   -f         a bare lowercase word after a prefixed name is an argument, as a CLI's
-#              flags are
-#   -r FILE    names the tool declared before, in the format of -d. One that is there and
-#              not in -d was renamed or removed, and a claim opening with it is a finding in
-#              every notation — under -b too, where an undeclared first word is otherwise
-#              prose, so a renamed command in a bare span is caught the day the declaration
-#              drops it. The calling gate makes the file, from the declarations it recorded
-#   -x FILE    excuses for the wrong calls a document shows on purpose, kept in a file no
-#              agent loads, so an excuse costs no request its tokens; a consumer keeps it
-#              beside the checker as check-interface.allow. One entry per line,
-#              `ID PATH [TEXT]`, excuses the findings of ID in PATH, spelt as the finding
-#              spells it, or only those on lines that contain TEXT when it is given; `#`
-#              opens a comment. An entry that excuses nothing is itself a finding
-#
-# An argument is read as `key=value`, as `key VALUE` where VALUE is an upper-case or
-# <angled> placeholder, and with -f as a bare word after a prefix. A claim ends at a shell
-# operator, at the end of its span or line, or after a word ending in `.` or `;`. A name
-# may hold a placeholder, <source> or SOURCE, which stands for every declared name it
-# fits, and each of those must take the argument.
-#
-# The findings, by the id each one carries:
-#   undeclared-name  a claim opens with a name the tool does not declare, or with a
-#                    placeholder no declared name fits
-#   undeclared-arg   a declared name is given an argument it does not take
-#   retired-name     a claim opens with a name -r holds and -d no longer does
-#   stale-allow      an entry in the -x file that excuses nothing, one naming a document
-#                    this run does not read included, so the file stays true
-#
-# Exit 0 when every claim holds, 1 with one `check-interface: FILE:LINE: ID: what` line
-# per finding, 2 on a usage error, an unreadable file, an -x entry that is not
-# `ID PATH [TEXT]` or names an id no excusable finding carries, a declared list that names
-# nothing, or documents that make no claim at all, so a notation that stopped matching is
-# not read as agreement. Nothing here reaches the network.
 # Needs bash 3.2 and POSIX tools only, so it runs on a macOS runner unchanged. It has no
 # repo-specific part: another repository takes it through the vendoring cascade
 # (references/bump-cascade.md in https://github.com/rokokol/ci-skill), never edits its
-# copy in place, and calls it from its own gate.
+# copy in place, and calls it from its own gate
 set -euo pipefail
 
-# The whole header, however long it grows: up to the first line that is not a comment
-usage() { sed -n '2,/^[^#]/p' "${BASH_SOURCE[0]}" | sed '$d; s/^# \{0,1\}//'; }
+usage() {
+  cat <<'EOF'
+Hold a skill's documents to the interface a foreign tool declares about itself: the
+commands of a CLI as its own help lists them, the tools and arguments an MCP server
+advertises, the fields an API accepts. When the tool renames one, a document that still
+teaches the old name teaches an agent to call something that does not exist, and nothing
+in the repository notices. Then it proves each of its checks able to fail, on planted
+documents built from the same declared list, every time it runs
+
+  check-interface.sh -d FILE [-r FILE] [-x FILE] [-p PREFIX]... [-a] [-b] [-c] [-s ERE] [-f] DOC...
+
+  -d FILE    what the tool declares: one name per line, or a name and one argument it
+             takes per line. A name `*` gives its arguments to every name, and an
+             argument written <like-this> is a positional value, so bare words after
+             that name are values rather than flags. How the list is made is the calling
+             gate's own line: an MCP handshake, `tool help | awk …`, a recorded snapshot
+  -p PREFIX  a claim opens with PREFIX at the start of a code span, or of a line in a
+             fenced block after an optional `$ `: `PREFIX NAME key=… flag`; repeatable
+  -a         PREFIX opens a claim anywhere in a line, prose included — for a prefix no
+             sentence uses in passing, such as the full name of an MCP tool
+  -b         a code span that opens with a declared name is a claim too; an undeclared
+             first word there is taken for prose, and so are its bare words, which may
+             be quoted output or a shell line as easily as flags, so only its `key=`
+             arguments are held
+  -c         a code span in call notation, `NAME(arg, arg=…, …)`, is a claim
+  -s ERE     a code span that is wholly a name matching ERE is a claim to that name
+  -f         a bare lowercase word after a prefixed name is an argument, as a CLI's
+             flags are
+  -r FILE    names the tool declared before, in the format of -d. One that is there and
+             not in -d was renamed or removed, and a claim opening with it is a finding in
+             every notation — under -b too, where an undeclared first word is otherwise
+             prose, so a renamed command in a bare span is caught the day the declaration
+             drops it. The calling gate makes the file, from the declarations it recorded
+  -x FILE    excuses for the wrong calls a document shows on purpose, kept in a file no
+             agent loads, so an excuse costs no request its tokens; a consumer keeps it
+             beside the checker as check-interface.allow. One entry per line,
+             `ID PATH [TEXT]`, excuses the findings of ID in PATH, spelt as the finding
+             spells it, or only those on lines that contain TEXT when it is given; `#`
+             opens a comment. An entry that excuses nothing is itself a finding
+
+An argument is read as `key=value`, as `key VALUE` where VALUE is an upper-case or
+<angled> placeholder, and with -f as a bare word after a prefix. A claim ends at a shell
+operator, at the end of its span or line, or after a word ending in `.` or `;`. A name
+may hold a placeholder, <source> or SOURCE, which stands for every declared name it
+fits, and each of those must take the argument
+
+The findings, by the id each one carries:
+  undeclared-name  a claim opens with a name the tool does not declare, or with a
+                   placeholder no declared name fits
+  undeclared-arg   a declared name is given an argument it does not take
+  retired-name     a claim opens with a name -r holds and -d no longer does
+  stale-allow      an entry in the -x file that excuses nothing, one naming a document
+                   this run does not read included, so the file stays true
+
+Nothing here reaches the network.
+Exit 0 when every claim holds, 1 with one `check-interface: FILE:LINE: ID: what` line
+per finding, 2 on a usage error, an unreadable file, an -x entry that is not
+`ID PATH [TEXT]` or names an id no excusable finding carries, a declared list that names
+nothing, or documents that make no claim at all, so a notation that stopped matching is
+not read as agreement
+EOF
+}
 
 die() {
   printf 'check-interface: %s\n' "$1" >&2

@@ -1,72 +1,74 @@
 #!/usr/bin/env bash
-# Decide the machine-checkable half of a changelog. Takes ANY changelog, so it is worth
-# more than a review comment: drop it into a repository's own gate and the rules stop
-# depending on somebody remembering them. Another repository takes it through the ci
-# skill's vendoring cascade (references/bump-cascade.md in https://github.com/rokokol/ci-skill)
-# and never edits its copy in place: a fix belongs in rokokol/versioning-skill
-#
-#   check-changelog.sh [-v VERSION-FILE | -n] [-t TEMPLATE] [CHANGELOG]
-#
-#   -v FILE       the repository's version file (default: VERSION beside the changelog)
-#   -n            assert this repository has no version, whatever files are lying around
-#   -t TEMPLATE   the heading template this changelog follows, level included, instead of
-#                 the first release heading choosing one from the table below
-#
-# Options may come before or after the changelog, and there is one changelog per run
-#
-# A repository HAS a version when someone can install a particular one and report a bug
-# against it. A VERSION file says so, and so does a numbered release heading unless -n
-# says otherwise, the version then living in a manifest this checker does not read. Such a
-# changelog may keep an `Unreleased` section on top for work waiting on the next release. A
-# repository that is only ever read at whatever revision is checked out has no version to
-# be wrong about: its headings are dates, and `Unreleased` is a state it can never be in,
-# so the section would never close
-#
-# Every release heading in one changelog follows one template. Without -t, the first
-# release heading picks it from the table; the flag gives it whole, level included, as in
-# -t '## [{version}] - {date}'. {version} is x.y.z or x.y with an optional -prerelease and
-# +build; {date} is YYYY-MM-DD and {long-date} a date in words, "July 20th, 2026" or
-# "Jan 26, 2026", and either must name a day that exists; {url} is a link target. HTML
-# tags and Keep a Changelog's ` [YANKED]` are read past
-#
-# Templates, and who writes them:
-#
-#   [{version}] - {date}           Keep a Changelog, Common Changelog
-#   [{version}]({url}) ({date})    release-please, conventional-changelog
-#   {version} - {date}             Common Changelog without the link
-#   {version} ({date})             angular, grafana, helix, typescript-eslint
-#   v{version} ({date})            babel, pydantic
-#   {version} ({long-date})        react, tokio
-#   v{version} — {long-date}       axios
-#   {version}                      jest, ruff, uv, esbuild, rollup, svelte
-#   v{version}                     bat, fd
-#   Version {version}              black
-#   {date}                         a repository with no version
-#
-# A release may sit at any level, since conventional-changelog writes a major at #, a minor
-# at ## and a patch at ###. The highest level a release sits at is the release level: there
-# a heading that follows no template is a finding, one deeper is a section, and a level-one
-# heading that opens the file is its title. `Unreleased`, in any case and bracketed or not,
-# sits at the release level. Headings are read in both Markdown forms, hashed and
-# underlined, and never inside a code fence
-#
-# Newest first: a release is out of place when it is newer than the one above it by version
-# and, where the template carries a day, by day as well. So a changelog keeping several
-# release lines passes whether it interleaves them by day, as angular's does, or keeps them
-# in blocks by version, as grafana's does
-#
-# Dated and numbered headings meet at most once, in either order: dated above numbered where
-# a repository stopped shipping versions, numbered above dated where it started, its dated
-# history kept rather than rewritten. A VERSION file puts the numbered ones on top, and -n
-# the dated ones
-#
-# Exit: 0 clean, 1 findings printed, 2 a usage error.
-# Nothing here reaches the network. Needs bash 3.2 and POSIX tools only.
+# Never edits its copy in place: a fix belongs in rokokol/versioning-skill. Needs bash 3.2
+# and POSIX tools only
 set -uo pipefail
 
-# The help is the header comment above, whole: it ends where the first non-comment line
-# starts, so the text can grow without a line count here going stale
-usage() { awk 'NR == 1 { next } !/^#/ { exit } { sub(/^# ?/, ""); print }' "${BASH_SOURCE[0]}"; }
+usage() {
+  cat <<'EOF'
+Decide the machine-checkable half of a changelog. Takes ANY changelog, so it is worth
+more than a review comment: drop it into a repository's own gate and the rules stop
+depending on somebody remembering them. Another repository takes it through the ci
+skill's vendoring cascade (references/bump-cascade.md in https://github.com/rokokol/ci-skill)
+
+  check-changelog.sh [-v VERSION-FILE | -n] [-t TEMPLATE] [CHANGELOG]
+
+  -v FILE       the repository's version file (default: VERSION beside the changelog)
+  -n            assert this repository has no version, whatever files are lying around
+  -t TEMPLATE   the heading template this changelog follows, level included, instead of
+                the first release heading choosing one from the table below
+
+Options may come before or after the changelog, and there is one changelog per run
+
+A repository HAS a version when someone can install a particular one and report a bug
+against it. A VERSION file says so, and so does a numbered release heading unless -n
+says otherwise, the version then living in a manifest this checker does not read. Such a
+changelog may keep an `Unreleased` section on top for work waiting on the next release. A
+repository that is only ever read at whatever revision is checked out has no version to
+be wrong about: its headings are dates, and `Unreleased` is a state it can never be in,
+so the section would never close
+
+Every release heading in one changelog follows one template. Without -t, the first
+release heading picks it from the table; the flag gives it whole, level included, as in
+-t '## [{version}] - {date}'. {version} is x.y.z or x.y with an optional -prerelease and
++build; {date} is YYYY-MM-DD and {long-date} a date in words, "July 20th, 2026" or
+"Jan 26, 2026", and either must name a day that exists; {url} is a link target. HTML
+tags and Keep a Changelog's ` [YANKED]` are read past
+
+Templates, and who writes them:
+
+  [{version}] - {date}           Keep a Changelog, Common Changelog
+  [{version}]({url}) ({date})    release-please, conventional-changelog
+  {version} - {date}             Common Changelog without the link
+  {version} ({date})             angular, grafana, helix, typescript-eslint
+  v{version} ({date})            babel, pydantic
+  {version} ({long-date})        react, tokio
+  v{version} — {long-date}       axios
+  {version}                      jest, ruff, uv, esbuild, rollup, svelte
+  v{version}                     bat, fd
+  Version {version}              black
+  {date}                         a repository with no version
+
+A release may sit at any level, since conventional-changelog writes a major at #, a minor
+at ## and a patch at ###. The highest level a release sits at is the release level: there
+a heading that follows no template is a finding, one deeper is a section, and a level-one
+heading that opens the file is its title. `Unreleased`, in any case and bracketed or not,
+sits at the release level. Headings are read in both Markdown forms, hashed and
+underlined, and never inside a code fence
+
+Newest first: a release is out of place when it is newer than the one above it by version
+and, where the template carries a day, by day as well. So a changelog keeping several
+release lines passes whether it interleaves them by day, as angular's does, or keeps them
+in blocks by version, as grafana's does
+
+Dated and numbered headings meet at most once, in either order: dated above numbered where
+a repository stopped shipping versions, numbered above dated where it started, its dated
+history kept rather than rewritten. A VERSION file puts the numbered ones on top, and -n
+the dated ones
+
+Nothing here reaches the network.
+Exit: 0 clean, 1 findings printed, 2 a usage error
+EOF
+}
 
 die() {
   printf 'check-changelog: %s\n' "$1" >&2
