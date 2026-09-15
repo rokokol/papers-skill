@@ -35,7 +35,7 @@ Rules:
 | Placeholder | Value |
 |---|---|
 | `IDENTIFIER` | what the user wrote, verbatim |
-| `SOURCE` | the server's lowercase source name from the identifier table in [sources.md](sources.md#identifiers): `arxiv`, `pubmed`, `biorxiv`, `medrxiv`, `semantic`, `crossref`, `openalex`, `dblp`; never the user's spelling, since `read_arXiv_paper` is not a tool <!-- check-interface: allow --> |
+| `SOURCE` | the server's lowercase source name from the identifier table in [sources.md](sources.md#identifiers): `arxiv`, `pubmed`, `biorxiv`, `medrxiv`, `semantic`, `crossref`, `openalex`, `dblp`; never the user's spelling, since `read_arXiv_paper` is not a tool |
 | `PAPER_ID` | the id in that source's form, from the same table |
 | `DOI`, `TITLE` | when known from a shortlist or a Crossref lookup; write `unknown` otherwise, and the subagent leaves the arguments out |
 | `USE_SCIHUB` | `false` when the user has said so, `true` otherwise, which is upstream's default |

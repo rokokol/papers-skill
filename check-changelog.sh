@@ -53,8 +53,12 @@
 # Newest first: a release is out of place when it is newer than the one above it by version
 # and, where the template carries a day, by day as well. So a changelog keeping several
 # release lines passes whether it interleaves them by day, as angular's does, or keeps them
-# in blocks by version, as grafana's does. Dated headings may sit above numbered ones, where
-# a repository stopped shipping versions
+# in blocks by version, as grafana's does
+#
+# Dated and numbered headings meet at most once, in either order: dated above numbered where
+# a repository stopped shipping versions, numbered above dated where it started, its dated
+# history kept rather than rewritten. A VERSION file puts the numbered ones on top, and -n
+# the dated ones
 #
 # Exit: 0 clean, 1 findings printed, 2 a usage error.
 # Nothing here reaches the network. Needs bash 3.2 and POSIX tools only.
@@ -289,6 +293,21 @@ report() { # report LINE MESSAGE
   findings=$((findings + 1))
 }
 
+# Dated and numbered headings meet once at most, where versions started or stopped; a second
+# meeting is the two kinds interleaved, which no transition explains. Called at $line
+last_kind=""
+meeting_line=""
+meet() { # meet dated|numbered
+  if [[ -n "$last_kind" && "$1" != "$last_kind" ]]; then
+    if [[ -z "$meeting_line" ]]; then
+      meeting_line=$line
+    else
+      report "$line" "a $1 heading below $last_kind ones, after the kinds met at line $meeting_line — the two kinds meet once, where a repository started or stopped shipping versions, and never interleave"
+    fi
+  fi
+  last_kind=$1
+}
+
 # Every heading as LINE:LEVEL:TEXT, in the order the file states them: hashed ones, and
 # underlined ones reported on the line of their text. Not inside a code fence, where a
 # shell comment is a hashed line; not a `---` after a blank line, a list item or a quote,
@@ -421,19 +440,20 @@ for entry in "${headings[@]}"; do
     fi
     releases=$((releases + 1))
     seen_release=1
+    meet dated
     if ((t_gd[hit])); then iso="${BASH_REMATCH[${t_gd[$hit]}]}"; else long_day "${BASH_REMATCH[${t_gl[$hit]}]}"; fi
     if ! real_day "$iso"; then
       report "$line" "$text is not a date — the heading has the shape of one, but no such day exists"
       continue
     fi
-    # Dated entries go above the numbered history, never below it. Asked at the dated heading,
-    # since only a dated one below a release is out of place: the rule used to be asked at
-    # the release, and fired on the good mixture while it let the reverse through
-    if [[ -n "$seen_numbered" ]]; then
-      report "$line" "a numbered heading above a dated one — dated entries belong on top, where a repository that stopped shipping versions keeps its newer work"
+    # Which kind sits on top is the repository's own word about itself: a VERSION file says it
+    # ships versions now, so its dated history goes below them; -n says it does not, so its
+    # dated entries, the newer work, go above. With neither, both transitions stand
+    if [[ -n "$no_version" && -n "$seen_numbered" ]]; then
+      report "$line" "a numbered heading above a dated one — a repository with no version keeps its dated entries, its newer work, on top"
     fi
-    if [[ -n "$version" ]]; then
-      report "$line" "a dated heading in a repository that ships version $version — a shipped artifact's changelog is numbered, so a reader can match an entry to what they installed"
+    if [[ -n "$version" && -z "$seen_numbered" ]]; then
+      report "$line" "a dated heading in a repository that ships version $version, above every numbered one — a shipped artifact puts its releases on top, so a reader can match an entry to what they installed"
     fi
     if [[ "$iso" == "$prev_date" ]]; then
       report "$line" "$text appears twice — one heading per day, and the second one's entries belong under the first"
@@ -454,6 +474,7 @@ for entry in "${headings[@]}"; do
       continue
     fi
     releases=$((releases + 1))
+    meet numbered
     v="${BASH_REMATCH[${t_gv[$hit]}]}"
     day="" iso=""
     if ((t_gd[hit])); then

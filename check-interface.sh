@@ -6,7 +6,7 @@
 # in the repository notices. Then it proves each of its checks able to fail, on planted
 # documents built from the same declared list, every time it runs.
 #
-#   check-interface.sh -d FILE [-r FILE] [-p PREFIX]... [-a] [-b] [-c] [-s ERE] [-f] DOC...
+#   check-interface.sh -d FILE [-r FILE] [-x FILE] [-p PREFIX]... [-a] [-b] [-c] [-s ERE] [-f] DOC...
 #
 #   -d FILE    what the tool declares: one name per line, or a name and one argument it
 #              takes per line. A name `*` gives its arguments to every name, and an
@@ -30,22 +30,36 @@
 #              every notation — under -b too, where an undeclared first word is otherwise
 #              prose, so a renamed command in a bare span is caught the day the declaration
 #              drops it. The calling gate makes the file, from the declarations it recorded
+#   -x FILE    excuses for the wrong calls a document shows on purpose, kept in a file no
+#              agent loads, so an excuse costs no request its tokens; a consumer keeps it
+#              beside the checker as check-interface.allow. One entry per line,
+#              `ID PATH [TEXT]`, excuses the findings of ID in PATH, spelt as the finding
+#              spells it, or only those on lines that contain TEXT when it is given; `#`
+#              opens a comment. An entry that excuses nothing is itself a finding
 #
 # An argument is read as `key=value`, as `key VALUE` where VALUE is an upper-case or
-# <angled> placeholder, and with -f as a bare word after a prefix. A claim ends at a shell operator, at
-# the end of its span or line, or after a word ending in `.` or `;`. A name may hold a
-# placeholder, <source> or SOURCE, which stands for every declared name it fits, and each
-# of those must take the argument. A line carrying `check-interface: allow` — in an HTML
-# comment, where a document shows a wrong call on purpose — is not read.
+# <angled> placeholder, and with -f as a bare word after a prefix. A claim ends at a shell
+# operator, at the end of its span or line, or after a word ending in `.` or `;`. A name
+# may hold a placeholder, <source> or SOURCE, which stands for every declared name it
+# fits, and each of those must take the argument.
 #
-# Exit 0 when every claim holds, 1 with one `check-interface: FILE:LINE: <what>` line per
-# finding, 2 on a usage error, an unreadable file, a declared list that names nothing, or
-# documents that make no claim at all, so a notation that stopped matching is not read as
-# agreement. Nothing here reaches the network. Needs bash 3.2 and POSIX tools only, so it
-# runs on a macOS runner unchanged. It has no repo-specific part: another repository
-# takes it through the vendoring cascade (references/bump-cascade.md in
-# https://github.com/rokokol/ci-skill), never edits its copy in place, and calls it from
-# its own gate.
+# The findings, by the id each one carries:
+#   undeclared-name  a claim opens with a name the tool does not declare, or with a
+#                    placeholder no declared name fits
+#   undeclared-arg   a declared name is given an argument it does not take
+#   retired-name     a claim opens with a name -r holds and -d no longer does
+#   stale-allow      an entry in the -x file that excuses nothing, one naming a document
+#                    this run does not read included, so the file stays true
+#
+# Exit 0 when every claim holds, 1 with one `check-interface: FILE:LINE: ID: what` line
+# per finding, 2 on a usage error, an unreadable file, an -x entry that is not
+# `ID PATH [TEXT]` or names an id no excusable finding carries, a declared list that names
+# nothing, or documents that make no claim at all, so a notation that stopped matching is
+# not read as agreement. Nothing here reaches the network.
+# Needs bash 3.2 and POSIX tools only, so it runs on a macOS runner unchanged. It has no
+# repo-specific part: another repository takes it through the vendoring cascade
+# (references/bump-cascade.md in https://github.com/rokokol/ci-skill), never edits its
+# copy in place, and calls it from its own gate.
 set -euo pipefail
 
 # The whole header, however long it grows: up to the first line that is not a comment
@@ -62,7 +76,7 @@ fail() {
 }
 
 self=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/$(basename -- "${BASH_SOURCE[0]}")
-declared="" retired="" prefixes="" first_prefix="" whole=""
+declared="" retired="" excuses="" prefixes="" first_prefix="" whole=""
 anywhere=0 bare=0 calls=0 flags=0
 # Every notation flag again, for the runs on planted documents
 opts=()
@@ -77,6 +91,11 @@ while (($#)); do
     -r)
       (($# >= 2)) || die "-r needs a file"
       retired=$2
+      shift 2
+      ;;
+    -x)
+      (($# >= 2)) || die "-x needs a file"
+      excuses=$2
       shift 2
       ;;
     -p)
@@ -133,6 +152,7 @@ done
 [[ -f "$declared" && -r "$declared" ]] || die "$declared is not a readable file"
 # An empty -r is fine: until the tool drops a name there is nothing it once declared
 [[ -z "$retired" || (-f "$retired" && -r "$retired") ]] || die "$retired is not a readable file"
+[[ -z "$excuses" || (-f "$excuses" && -r "$excuses") ]] || die "$excuses is not a readable file"
 (($#)) || die "no document to check"
 for doc in "$@"; do
   [[ -f "$doc" && -r "$doc" ]] || die "$doc is not a readable file"
@@ -144,14 +164,25 @@ done
 nnames=$(awk 'NF && $1 != "*" && $1 !~ /^#/ { print $1 }' "$declared" | sort -u | wc -l | tr -d ' ')
 ((nnames > 0)) || die "$declared declares no name: an empty interface would agree with anything"
 
-# One pass over the declared list and the documents. Prints "F<tab>FILE:LINE: what" per
-# finding and "C<tab>N" for the number of claims read. POSIX awk only: no gensub and no
-# arrays of arrays. A quoted heredoc in a function, not a $( ) around one, which bash 3.2
-# mis-parses when the text holds an unbalanced parenthesis, as the bracket below does
+# One pass over the declared list and the documents. Prints "E<tab>what" per -x entry it
+# cannot read, "F<tab>FILE:LINE: ID: what" per finding, "X<tab>N" for the findings the -x
+# file excused and "C<tab>N" for the number of claims read. POSIX awk only: no gensub and
+# no arrays of arrays. A quoted heredoc in a function, not a $( ) around one, which bash
+# 3.2 mis-parses when the text holds an unbalanced parenthesis, as the bracket below does
 awk_program() {
   cat <<'AWK'
 function trim(s) { sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); return s }
-function finding(what) { found[FILENAME ":" FNR ": " what] = 1 }
+# TEXT is matched against the line as written, so a fenced line keeps its `$ `
+function finding(id, what,   i, key) {
+  key = FILENAME ":" FNR ": " id ": " what
+  for (i = 1; i <= na; i++)
+    if (aid[i] == id && apath[i] == FILENAME && (atext[i] == "" || index($0, atext[i]))) {
+      used[i] = 1
+      forgiven[key] = 1
+      return
+    }
+  found[key] = 1
+}
 # <angled> placeholders, and runs of two or more capitals that touch no lowercase letter,
 # stand for any lowercase segment of a name; camelCase capitals stay literal
 function pattern_of(name,   n, out, before, run) {
@@ -184,7 +215,7 @@ function resolve(name,   p, i, n) {
 function hold(arg, n,   i) {
   for (i = 1; i <= n; i++)
     if (!((fit[i] SUBSEP arg) in takes) && !(("*" SUBSEP arg) in takes))
-      finding(fit[i] " takes no " arg)
+      finding("undeclared-arg", fit[i] " takes no " arg)
 }
 function any_positional(n,   i) {
   for (i = 1; i <= n; i++) if (fit[i] in positional) return 1
@@ -202,11 +233,11 @@ function claim(text, strict,   name, rest, n, args, na, a, toks, nt, i, t, last)
   if (n == 0) {
     if (was_declared(name)) {
       claims++
-      finding(name " is no longer declared")
+      finding("retired-name", name " is no longer declared")
     } else if (strict) {
       claims++
-      if (index(pattern_of(name), "\001")) finding(name " fits no declared name")
-      else finding(name " is not a declared name")
+      if (index(pattern_of(name), "\001")) finding("undeclared-name", name " fits no declared name")
+      else finding("undeclared-name", name " is not a declared name")
     }
     return
   }
@@ -299,6 +330,36 @@ BEGIN {
     }
     close(retired_file)
   }
+  # The -x file: `ID PATH [TEXT]`, TEXT the rest of the line with the space around it trimmed
+  excusable = ENVIRON["CHECK_INTERFACE_IDS"]
+  split(excusable, field, " ")
+  for (i in field) known[field[i]] = 1
+  allow_file = ENVIRON["CHECK_INTERFACE_ALLOW"]
+  na = 0
+  if (allow_file != "") {
+    k = 0
+    while ((getline line < allow_file) > 0) {
+      k++
+      if (line ~ /^[ \t]*(#|$)/) continue
+      if (split(line, field, " ") < 2) {
+        print "E\t" allow_file ":" k ": expected ID PATH [TEXT], got: " line
+        continue
+      }
+      if (!(field[1] in known)) {
+        print "E\t" allow_file ":" k ": " field[1] " is not an id an excuse can name: " excusable
+        continue
+      }
+      text = line
+      sub(/^[ \t]*[^ \t]+[ \t]+[^ \t]+[ \t]*/, "", text)
+      sub(/[ \t]+$/, "", text)
+      na++
+      aid[na] = field[1]
+      apath[na] = field[2]
+      atext[na] = text
+      aline[na] = k
+    }
+    close(allow_file)
+  }
 }
 FNR == NR {
   if (NF == 0 || $1 ~ /^#/) next
@@ -312,7 +373,6 @@ FNR == NR {
 }
 FNR == 1 { fence = 0 }
 /^[ \t]*(```|~~~)/ { fence = !fence; next }
-/check-interface: allow/ { next }
 fence {
   line = $0
   sub(/^[ \t]*(\$[ \t]+)?/, "", line)
@@ -332,20 +392,40 @@ fence {
   if (anywhere) inside($0)
 }
 END {
+  # An excuse that excuses nothing is a rule switched off for a line that no longer exists
+  for (i = 1; i <= na; i++)
+    if (!(i in used))
+      found[allow_file ":" aline[i] ": stale-allow: the entry for " aid[i] " in " apath[i] " excuses nothing"] = 1
   for (k in found) print "F\t" k
+  n = 0
+  for (k in forgiven) n++
+  print "X\t" n
   print "C\t" claims
 }
 AWK
 }
 
-scan() { # scan DOC... -> the F and C lines for these documents
-  CHECK_INTERFACE_PREFIXES=$prefixes CHECK_INTERFACE_WHOLE=$whole \
+# The ids a finding carries are read from the header, the one list of them, and the
+# planted section holds the code to it; stale-allow is the one an entry cannot name
+help_ids=$(usage | awk '/^The findings/ { on = 1; next } on && !NF { exit } on && /^  [a-z]/ { print $1 }')
+excusable=$(printf '%s\n' "$help_ids" | grep -vx stale-allow | tr '\n' ' ')
+
+scan() { # scan DOC... -> the E, F, X and C lines for these documents
+  # The -x path through the environment, as awk -v would expand a backslash in it
+  CHECK_INTERFACE_PREFIXES=$prefixes CHECK_INTERFACE_WHOLE=$whole CHECK_INTERFACE_ALLOW=$excuses \
+    CHECK_INTERFACE_IDS=$excusable \
     awk -v anywhere="$anywhere" -v bare="$bare" -v calls="$calls" -v flags="$flags" \
     -v retired_file="$retired" "$(awk_program)" "$declared" "$@"
 }
 
 out=$(scan "$@") || die "awk could not read the documents"
+unread=$(printf '%s\n' "$out" | awk -F '\t' '$1 == "E" { print "check-interface: " $2 }')
+if [[ -n "$unread" ]]; then
+  printf '%s\n' "$unread" >&2
+  exit 2
+fi
 claims=$(printf '%s\n' "$out" | awk -F '\t' '$1 == "C" { print $2 }')
+excused=$(printf '%s\n' "$out" | awk -F '\t' '$1 == "X" { print $2 }')
 findings=$(printf '%s\n' "$out" | awk -F '\t' '$1 == "F" { print "check-interface: " $2 }' | sort)
 if [[ -n "$findings" ]]; then
   printf '%s\n' "$findings"
@@ -361,6 +441,17 @@ fi
 # faithful ones. The names are made up so no declared name can collide with them
 work=$(mktemp -d "${TMPDIR:-/tmp}/check-interface.XXXXXX")
 trap 'rm -rf "$work"' EXIT
+
+# Every id the code gives a finding is in the header, and every id an entry may name there
+# is one the code gives, so neither is added without the other
+code_ids=$(awk_program | awk '{ while (match($0, /finding\("[a-z-]+"/)) { print substr($0, RSTART + 9, RLENGTH - 10); $0 = substr($0, RSTART + RLENGTH) } }' | sort -u)
+[[ -n "$code_ids" ]] || fail "no finding(\"ID\", …) call was read from the awk program, so its ids go unchecked"
+for id in $code_ids; do
+  grep -qx -- "$id" <<<"$help_ids" || fail "a finding carries $id, which the header's list of ids does not name"
+done
+for id in $excusable; do
+  grep -qx -- "$id" <<<"$code_ids" || fail "the header names $id, which no finding carries"
+done
 
 has_pair() { # has_pair NAME ARG -> whether the list declares it, directly or through *
   awk -v n="$1" -v a="$2" 'NF >= 2 && ($1 == n || $1 == "*") && $2 == a { found = 1 } END { exit !found }' "$declared"
@@ -401,16 +492,31 @@ if [[ -n "$whole" ]]; then
 fi
 
 planted=0
+# Set before a plant, and spent by it: the entries of the planted -x file, and a text the
+# output must not hold
+entries=()
+absent=""
 plant() { # plant EXPECT WHAT LINE... — a document of these lines must exit EXPECT, and name WHAT
-  local expect=$1 what=$2 got=0 said
+  local expect=$1 what=$2 got=0 said excuse
   shift 2
   printf '%s\n' "${faithful[@]}" "$@" >"$work/planted.md"
-  said=$(CHECK_INTERFACE_PLANTED=1 "$BASH" "$self" -d "$declared" ${opts[@]+"${opts[@]}"} "$work/planted.md" 2>&1) || got=$?
-  ((got == expect)) ||
-    fail "a planted document exited $got where $expect was due ($what):"$'\n'"$(cat "$work/planted.md")"$'\n'"$said"
-  if ((expect == 1)) && ! grep -qF -- "$what" <<<"$said"; then
-    fail "a planted document went red, but not for $what:"$'\n'"$said"
+  excuse=()
+  : >"$work/planted.allow"
+  if [[ -n "${entries[*]+set}" ]]; then
+    printf '%s\n' "${entries[@]}" >"$work/planted.allow"
+    excuse=(-x "$work/planted.allow")
   fi
+  said=$(CHECK_INTERFACE_PLANTED=1 "$BASH" "$self" -d "$declared" ${excuse[@]+"${excuse[@]}"} ${opts[@]+"${opts[@]}"} "$work/planted.md" 2>&1) || got=$?
+  ((got == expect)) ||
+    fail "a planted document exited $got where $expect was due ($what):"$'\n'"$(cat "$work/planted.md")"$'\n'"excused by:"$'\n'"$(cat "$work/planted.allow")"$'\n'"$said"
+  if ((expect != 0)) && ! grep -qF -- "$what" <<<"$said"; then
+    fail "a planted document exited $got, but not for $what:"$'\n'"$said"
+  fi
+  if [[ -n "$absent" ]] && grep -qF -- "$absent" <<<"$said"; then
+    fail "a planted document was named for $absent, which an entry excuses:"$'\n'"$said"
+  fi
+  entries=()
+  absent=""
   planted=$((planted + 1))
 }
 
@@ -426,7 +532,6 @@ if [[ -n "$first_prefix" ]]; then
   plant 1 "$name takes no $wrong" "\`$first_prefix$name $wrong VALUE\`"
   plant 1 "$name takes no $wrong" '```' "\$ $first_prefix$name $wrong=v" '```'
   plant 1 "$name takes no $wrong" "\`$first_prefix$placeholder $wrong=v\`"
-  plant 0 "an allowed line is not read" "\`$first_prefix$ghost\` <!-- check-interface: allow -->"
   if ((! flags)); then
     plant 0 "a word before a quoted value is prose, not an argument" "\`$first_prefix$name and not \"$wrong\"\`"
   fi
@@ -452,6 +557,44 @@ fi
 if ((flags)); then
   plant 1 "$name takes no $wrong" "\`$first_prefix$name $wrong\`"
 fi
+
+# The excuses, on a defect this run reads in whichever notation it has: named alone, and
+# not named once an entry of its id and document excuses it
+doc=$work/planted.md
+if [[ -n "$first_prefix" ]]; then
+  defect="\`$first_prefix$ghost\`" defect_id=undeclared-name defect_what="$ghost is not a declared name"
+elif ((calls)); then
+  defect="\`$ghost($arg)\`" defect_id=undeclared-name defect_what="$ghost is not a declared name"
+elif [[ -n "$whole" ]]; then
+  defect="\`$whole_ghost\`" defect_id=undeclared-name defect_what="$whole_ghost is not a declared name"
+else
+  defect="\`$name $wrong=v\`" defect_id=undeclared-arg defect_what="$name takes no $wrong"
+fi
+if [[ "$defect_id" == undeclared-name ]]; then other_id=undeclared-arg; else other_id=undeclared-name; fi
+at=$((${#faithful[@]} + 1))
+plant 1 "$doc:$at: $defect_id: $defect_what" "$defect"
+entries=("$defect_id $doc")
+plant 0 "an entry excuses its id in its document" "$defect"
+entries=("$other_id $doc")
+plant 1 "$doc:$at: $defect_id: $defect_what" "$defect"
+entries=("$defect_id $work/another.md")
+plant 1 "$doc:$at: $defect_id: $defect_what" "$defect"
+entries=("$defect_id $doc in plant one")
+absent="$doc:$at:"
+plant 1 "$doc:$((at + 1)): $defect_id: $defect_what" "$defect in plant one" "$defect in plant two"
+# The space an editor leaves after an entry is not part of its text
+entries=("$defect_id $doc in plant two" "$defect_id $doc in plant one  ")
+plant 0 "each entry excuses its own line, the first not standing for the rest" "$defect in plant one" "$defect in plant two"
+if [[ -n "$first_prefix" ]]; then
+  entries=("undeclared-name $doc \$ $first_prefix$ghost")
+  plant 0 "an entry's text is read against the fenced line as written" '```' "\$ $first_prefix$ghost" '```'
+fi
+entries=('# a comment and a blank line are not entries' '' "$defect_id $doc")
+plant 1 "planted.allow:3: stale-allow" "a line that holds no defect"
+entries=("$defect_id")
+plant 2 "expected ID PATH [TEXT]" "$defect"
+entries=("stale-allow $doc")
+plant 2 "stale-allow is not an id an excuse can name" "$defect"
 if [[ -n "$retired" ]] && ((nnames > 1)); then
   # The tool drops a name: the list without it is the declaration, the list with it the
   # earlier one, and a claim still opening with it must be named in every notation read —
@@ -472,4 +615,4 @@ if [[ -n "$retired" ]] && ((nnames > 1)); then
   if ((bare)); then plant_retired "\`$name\`"; fi
 fi
 
-echo "check-interface: $claims claims in $# documents hold against $nnames declared names, $planted planted cases behave"
+echo "check-interface: $claims claims in $# documents hold against $nnames declared names, $excused findings excused, $planted planted cases behave"

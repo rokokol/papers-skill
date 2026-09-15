@@ -1,0 +1,3 @@
+# Wrong calls the docs show on purpose, excused for check-interface.sh -x: ID PATH [TEXT]
+# The user's spelling of a source, shown as the tool name that does not exist
+undeclared-name references/reader.md read_arXiv_paper

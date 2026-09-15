@@ -38,6 +38,8 @@
 #   prompt-idiom       MUST or CRITICAL in capitals, IMPORTANT:, take a deep breath,
 #                      comprehensive, Red Flags
 #   model-id           a concrete model id where an example should say <model>
+#   recheck-instruction  double-check, verify your work, a reviewing agent as a step: a
+#                      review happens when the user asks, not on the skill's say-so
 #   unverified-source  a fetch-failure note beside a claim
 #   trigger-duplicate  a trigger listed twice in the description
 #   readme-badge       the readme's badge row does not open with the Agent Skill badge
@@ -385,6 +387,9 @@ for doc in "${runtime[@]}"; do
     'a concrete model id is copied verbatim; an example says <model>'
   scan unverified-source "$doc" 1 0 1 'fetch failed|could not (be )?fetch|canonical location' '' \
     'a fetch-failure note beside a claim says the claim was not checked; verify it or remove it'
+  scan recheck-instruction "$doc" 1 0 1 \
+    'double-check|re-check|recheck|check your (own )?work|verify your (own )?(work|answer|result)|(review|check)( it| the result| the diff)? (by|with) (a |an |another )?(sub)?agent' '' \
+    'the model verifies as it works; a review by another agent happens when the user asks for one'
 done
 scan install-section SKILL.md 0 0 0 '^#+[ \t]+(Install|Installation|Setup|Checkout)[ \t]*$' '' \
   'install and setup are the readme'"'"'s; an agent that loaded the skill is past them'
@@ -682,7 +687,9 @@ p=$(plant "$c" 'You MUST always run the gate')
 excuse "$c" "prompt-idiom $p"
 expect_quiet "$c" "$p:1: prompt-idiom" "an excused idiom"
 c=$(copy idiom-title)
-p=$(plant "$c" 'See [A comprehensive study of pseudo-tested methods](https://example.org/paper)')
+# A relative link rather than a URL: a consumer's own secret gate may read any URL with a
+# path as an address it must not leak, and the plant travels into every consumer
+p=$(plant "$c" 'See [A comprehensive study of pseudo-tested methods](zz-planted.md)')
 expect_quiet "$c" "$p:1: prompt-idiom" "an idiom inside a linked title"
 
 c=$(copy model-id)
@@ -701,6 +708,14 @@ p=$(plant "$c" '```
 Assisted-by: Claude Code:<model>
 ```')
 expect_quiet "$c" "$p:2: model-id" "a <model> placeholder"
+
+c=$(copy recheck)
+p=$(plant "$c" 'Double-check your work, then have a subagent review the result')
+expect_warn "$c" "$p:1: recheck-instruction" "a re-check instruction"
+c=$(copy recheck-excused)
+p=$(plant "$c" 'Double-check your work, then have a subagent review the result')
+excuse "$c" "recheck-instruction $p"
+expect_quiet "$c" "$p:1: recheck-instruction" "an excused re-check instruction"
 
 c=$(copy unverified)
 p=$(plant "$c" 'The limit is 30 (fetch failed while writing this; the page is the canonical location)')

@@ -98,8 +98,9 @@ sort -u "$work/tools.txt" "$work/args.txt" >"$work/declared.txt"
 # since no sentence says mcp__paper-search__ in passing; call notation; and a span that is
 # wholly a tool name. A placeholder such as read_<source>_paper or read_SOURCE_paper stands
 # for every read tool, and each must take the argument. It plants its own defects on every
-# run, in documents built from this same list
-./check-interface.sh -d "$work/declared.txt" -p mcp__paper-search__ -a -c \
+# run, in documents built from this same list. A wrong name shown on purpose is excused in
+# check-interface.allow, which no agent loads
+./check-interface.sh -d "$work/declared.txt" -x check-interface.allow -p mcp__paper-search__ -a -c \
   -s '(search|read|download|get)_[A-Za-z_<>]+' "${docs[@]}"
 
 echo "== every source the documents route to is one the CLI lists, and has a read tool"
