@@ -8,7 +8,7 @@ Rules for this file: one entry per workaround, and every entry carries a mechani
 
 ## Semantic Scholar failures patched into `paper-search-mcp`
 
-**Where:** `nix/package.nix`, `patches`: a `fetchpatch` of the commit behind [openags/paper-search-mcp#111](https://github.com/openags/paper-search-mcp/pull/111), limited to `paper_search_mcp/`, so the tests it also touches, which the PyPI release does not ship, stay out
+**Where:** `nix/package.nix`, `patches`: a `fetchpatch` of the commit behind [openags/paper-search-mcp#115](https://github.com/openags/paper-search-mcp/pull/115), limited to `paper_search_mcp/`, so the tests it also touches, which the PyPI release does not ship, stay out
 
 **Symptom it prevents:** `search_papers` with `semantic` among its sources answers `"semantic": 0` and an empty `errors` map when Semantic Scholar refused the request (rate limited after every retry, an HTTP error, a network error), which is the same answer as a query that matched nothing. The anonymous pool is throttled at busy hours, so without the patch a zero from `semantic` says nothing. With it, the refusal lands in `errors["semantic"]`, and `search_semantic` fails as a tool call instead of returning an empty list
 
@@ -16,7 +16,7 @@ Rules for this file: one entry per workaround, and every entry carries a mechani
 
 **Why it happens:** `SemanticSearcher.request_api()` does tell the failures apart, and `search()` logs the failure and returns `[]`; `search_papers` records a source's error only when its searcher raises
 
-**Reported:** [openags/paper-search-mcp#111](https://github.com/openags/paper-search-mcp/pull/111), open
+**Reported:** [openags/paper-search-mcp#115](https://github.com/openags/paper-search-mcp/pull/115), merged
 
 **Removal check:**
 

@@ -24,9 +24,9 @@ python3Packages.buildPythonApplication rec {
   # A stopgap until a release carries it; see WORKAROUNDS.md for what it fixes and when it goes
   patches = [
     (fetchpatch {
-      url = "https://github.com/openags/paper-search-mcp/commit/f3c0d8260992ed8b5f1a4c186a81ad05b2c77a37.patch";
+      url = "https://github.com/openags/paper-search-mcp/commit/f298a3c679d34d498f3cd6c567cc9b3202c28ef4.patch";
       includes = [ "paper_search_mcp/*" ];
-      hash = "sha256-P2QR+pTelvzOZBuZrIImBIUwBBJgg7vT6WIgIRp5KvY=";
+      hash = "sha256-WAe058TzuaVWrf/QAb3yZDorpVOHgNuT2jt2ZkontSI=";
     })
   ];
 
