@@ -59,7 +59,7 @@ The findings, by the id each one carries:
   stale-allow      an entry in the -x file that excuses nothing, one naming a document
                    this run does not read included, so the file stays true
 
-Nothing here reaches the network.
+Nothing here reaches the network
 Exit 0 when every claim holds, 1 with one `check-interface: FILE:LINE: ID: what` line
 per finding, 2 on a usage error, an unreadable file, an -x entry that is not
 `ID PATH [TEXT]` or names an id no excusable finding carries, a declared list that names
@@ -410,8 +410,11 @@ AWK
 
 # The ids a finding carries are read from the header, the one list of them, and the
 # planted section holds the code to it; stale-allow is the one an entry cannot name
-help_ids=$(usage | awk '/^The findings/ { on = 1; next } on && !NF { exit } on && /^  [a-z]/ { print $1 }')
-excusable=$(printf '%s\n' "$help_ids" | grep -vx stale-allow | tr '\n' ' ')
+# Both texts reach their reader through <<<: awk's `exit` and `grep -q` stop reading, and
+# a producer on the other side of a pipe would die of SIGPIPE, which pipefail turns into
+# the status of a command that found what it was looking for
+help_ids=$(awk '/^The findings/ { on = 1; next } on && !NF { exit } on && /^  [a-z]/ { print $1 }' <<<"$(usage)")
+excusable=$(grep -vx stale-allow <<<"$help_ids" | tr '\n' ' ')
 
 scan() { # scan DOC... -> the E, F, X and C lines for these documents
   # The -x path through the environment, as awk -v would expand a backslash in it
@@ -489,7 +492,7 @@ if [[ -n "$whole" ]]; then
   whole_name=$(CHECK_INTERFACE_WHOLE=$whole awk 'NF && $1 != "*" && $1 ~ ("^(" ENVIRON["CHECK_INTERFACE_WHOLE"] ")$") { print $1; exit }' "$declared")
   [[ -n "$whole_name" ]] || die "no declared name matches -s $whole, so the notation can find nothing"
   whole_ghost=${whole_name}zq
-  printf '%s\n' "$whole_ghost" | grep -qxE -- "$whole" ||
+  grep -qxE -- "$whole" <<<"$whole_ghost" ||
     die "-s $whole accepts $whole_name but not $whole_ghost, so no made-up name can be planted in it"
   faithful+=("\`$whole_name\`")
 fi

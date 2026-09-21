@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Needs bash 3.2 and POSIX tools only, so it runs on a macOS runner unchanged. From
-# https://github.com/rokokol/skill-authoring-skill, never edits its copy in place. There the
-# falsification proves nothing new and repeats in every copy. What it accepts is usage()
-# below, and nowhere else
+# Needs bash 3.2 and POSIX tools only, so it runs on a macOS runner unchanged. Taken from
+# https://github.com/rokokol/skill-authoring-skill through the vendoring cascade
+# (references/bump-cascade.md in https://github.com/rokokol/ci-skill): a copy is never
+# edited in place, a fix is made there. What it accepts is usage() below, and nowhere else
 set -euo pipefail
 
 usage() {
@@ -13,15 +13,13 @@ following links, and that every relative link and heading anchor in the docs res
 then proves each of those checks able to fail, on throwaway copies of the repository
 with one planted defect each, every time it runs. A check that has never been red is a
 decoration, and a copy of this file is falsified in its own repository on every run. It
-has no repo-specific part: another repository takes it through the vendoring cascade
-(references/bump-cascade.md in https://github.com/rokokol/ci-skill) and calls it from
-its own gate
+has no repo-specific part, and belongs in a repository's own gate
 
   check-skill.sh [--strict] [-n NAME] [DIR]
 
 DIR is the skill's repository (default: the current directory). -n NAME is what the
-readme and the install symlink call the skill, which the frontmatter must agree with.
-Nothing here reaches the network.
+readme and the install symlink call the skill, which the frontmatter must agree with
+Nothing here reaches the network
 Exit 1 with `check-skill: <what>` on the first finding, 2 on a usage error
 
 Two tiers. An error is what stops a skill loading or leaves a reference unread, and it
@@ -39,7 +37,9 @@ would silently excuse the next real violation that lands on that path
 
 CHECK_SKILL_NESTED=1 skips the self-falsification and runs only the checks. The planted
 copies are run that way, and so should a gate that runs this script inside copies of its
-own repository
+own repository or calls it more than once in one run. The first call of every run keeps
+it: the defects are planted into a copy of the repository being checked, so what it
+proves changes with that repository
 
 The warnings, by the id each line carries:
   layout-section     a Layout heading in SKILL.md or a reference: readme content,
@@ -115,14 +115,20 @@ fail() {
 # and nothing says so: the agent just never reaches for it.
 
 [[ -f SKILL.md ]] || fail "no SKILL.md in $root — there is nothing for an agent to load"
-head -n 1 SKILL.md | grep -qx -- '---' || fail "SKILL.md does not open with a frontmatter block"
+# <<< rather than a pipe even here, where `head` writes its line and leaves nothing to
+# kill: the rule holds for every reader that stops early, and a checker that spells its
+# own exception is a checker nobody can hold to it
+grep -qx -- '---' <<<"$(head -n 1 SKILL.md)" || fail "SKILL.md does not open with a frontmatter block"
 front=$(sed -n '2,/^---$/p' SKILL.md)
 [[ "$(printf '%s\n' "$front" | tail -n 1)" == "---" ]] ||
   fail "SKILL.md's frontmatter is never closed by a second ---"
 front=$(printf '%s\n' "$front" | sed '$d')
 
 front_value() { # front_value KEY -> the scalar, quotes stripped, a block scalar joined
-  printf '%s\n' "$front" | awk -v key="$1" -v q="'" '
+  # <<< and not a printf into the pipe: the program below exits as soon as it has the
+  # value, and a producer whose reader stops early dies of SIGPIPE, which pipefail then
+  # makes the status of a pipeline that did its job
+  awk -v key="$1" -v q="'" '
     found { if ($0 ~ /^[ \t]+/) { sub(/^[ \t]+/, ""); out = out (out == "" ? "" : " ") $0; next } else exit }
     index($0, key ":") == 1 {
       found = 1
@@ -135,11 +141,13 @@ front_value() { # front_value KEY -> the scalar, quotes stripped, a block scalar
       if (substr(out, 1, 1) == q) out = substr(out, 2)
       if (substr(out, length(out)) == q) out = substr(out, 1, length(out) - 1)
       print out
-    }'
+    }' <<<"$front"
 }
 
 for key in name description license; do
-  printf '%s\n' "$front" | grep -q "^$key:" ||
+  # <<< rather than a pipe: `grep -q` closes the pipe at its match and the producer's next
+  # write dies of SIGPIPE, which pipefail makes the status of a pipeline that succeeded
+  grep -q "^$key:" <<<"$front" ||
     fail "SKILL.md's frontmatter has no $key — an agent will not load a skill without one"
   [[ -n "$(front_value "$key")" ]] || fail "SKILL.md's frontmatter leaves $key empty"
 done
@@ -464,7 +472,8 @@ done
 desc=$(front_value description)
 triggers="${desc##*Triggers:}"
 if [[ "$triggers" != "$desc" ]]; then
-  dline=$(grep -n '^description:' SKILL.md | head -n 1 | cut -d: -f1)
+  # `sed -n 1s…p` rather than `| head -n 1 |`, which stops reading and kills the grep
+  dline=$(grep -n '^description:' SKILL.md | sed -n '1s/:.*//p')
   # Bytes, not the locale's collation: macOS's uniq compares in it, and there every
   # Cyrillic trigger collates equal to every other of the same word count — PITFALLS.md
   while IFS= read -r dup; do
@@ -772,7 +781,7 @@ expect_quiet "$c" "$p:1: unverified-source" "an excused fetch-failure note"
 
 c=$(copy trigger-twice)
 sed 's/^description:.*/description: "What it is. Use when needed. Triggers: alpha, beta, Alpha."/' SKILL.md >"$c/SKILL.md"
-n=$(grep -n '^description:' "$c/SKILL.md" | head -n 1 | cut -d: -f1)
+n=$(grep -n '^description:' "$c/SKILL.md" | sed -n '1s/:.*//p')
 expect_warn "$c" "SKILL.md:$n: trigger-duplicate: 'alpha'" "a trigger listed twice"
 c=$(copy trigger-twice-excused)
 sed 's/^description:.*/description: "What it is. Use when needed. Triggers: alpha, beta, Alpha."/' SKILL.md >"$c/SKILL.md"
