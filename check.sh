@@ -47,6 +47,17 @@ shellcheck "${scripts[@]}"
 shfmt -d -i 2 -ci "${scripts[@]}"
 python3 -m py_compile tests/mcp-tools.py tools/*.py
 
+echo "== the Nix this repository holds is formatted"
+# A `formatter` output nothing runs is a declaration, not a rule. nixfmt rather than
+# `nix fmt`, because the second needs the flake and this is the binary the wrapper calls.
+# The list comes from git rather than from a glob: a .nix file under nix/ is as much this
+# repository's as flake.nix, and a glob that misses one reads as a clean run
+nixfiles=()
+while IFS= read -r f; do nixfiles+=("$f"); done < <(git ls-files -- '*.nix')
+((${#nixfiles[@]})) || fail "no .nix file is tracked here, yet the flake declares a formatter"
+nixfmt --check "${nixfiles[@]}" ||
+  fail "a .nix file here is not what nixfmt writes — run nix fmt"
+
 echo "== the workflows are valid, and their tools come from the lock rather than a registry"
 [[ -d .github/workflows ]] || fail ".github/workflows is missing — nothing gates this repository"
 actionlint

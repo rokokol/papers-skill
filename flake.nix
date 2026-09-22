@@ -101,6 +101,9 @@
         default = pkgs.mkShell {
           packages = with pkgs; [
             actionlint
+            # The same binary the formatter output wraps with treefmt. The gate calls it
+            # directly, because `nix fmt` needs the flake and a check should not
+            nixfmt
             shellcheck
             shfmt
             jq
