@@ -32,14 +32,21 @@ The sources come from [paper-search-mcp](https://github.com/openags/paper-search
 
 ## Install the skill
 
-```sh
-git clone https://github.com/rokokol/papers-skill ~/Projects/papers
-ln -s ~/Projects/papers ~/.claude/skills/papers
+```bash
+npx skills add -g rokokol/papers-skill    # for you, everywhere
+npx skills add rokokol/papers-skill       # for the project you are standing in
 ```
 
-Or straight into the skills directory your agent reads:
+Claude Code also takes it as a plugin:
 
-```sh
+```
+/plugin marketplace add rokokol/skills
+/plugin install papers@rokokol-skills
+```
+
+or by hand — clone into whichever skills directory your agent reads:
+
+```bash
 git clone https://github.com/rokokol/papers-skill ~/.claude/skills/papers
 ```
 
