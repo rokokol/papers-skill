@@ -5,6 +5,12 @@ name: vendor-sync
 # repository's real gate against it, and lands it only on green; red leaves the dated
 # branch standing, with the new copies on it, for a human to look at. How it works:
 # references/bump-cascade.md in https://github.com/rokokol/ci-skill
+#
+# This file is the one workflow here that is NOT vendored from that skill's templates, and
+# the verify job below is why. Elsewhere in the family macos.yml is a check of its own and
+# build.yml reaches it for the cascade; here macos.yml is a wrapper that calls ci.yml, so
+# ci.yml cannot call it back. The matrix does the same job instead, and the template cannot
+# carry a matrix: it also serves repositories that have no macOS runner at all
 on:
   schedule:
     # Ahead of the dependency bump in the same repository, so a week's fixes to the shared

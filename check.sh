@@ -22,8 +22,11 @@ cd "$HERE"
 
 # One source of truth for what gets linted. A second copy of this list drifts, and a
 # drifted list lies about what was checked.
-scripts=(check.sh check-skill.sh check-pins.sh check-changelog.sh check-interface.sh vendor-sync.sh)
+scripts=(check.sh check-skill.sh check-pins.sh check-changelog.sh check-interface.sh check-prose.sh vendor-sync.sh)
 docs=(SKILL.md README.md references/*.md)
+# Every markdown this repository ships. Wider than the documents an agent loads, because
+# the house prose rules hold over the changelog and the workarounds as well
+prose=("${docs[@]}" CHANGELOG.md WORKAROUNDS.md)
 skill_name=papers
 
 fail() {
@@ -74,6 +77,12 @@ echo "== SKILL.md loads, every reference is reachable, and every link and anchor
 # The one gate every skill repository shares, vendored from the ci skill. It plants a
 # defect per check on every run, so nothing here has to prove it separately
 ./check-skill.sh -n "$skill_name" .
+
+echo "== every document keeps the house rules a script can decide"
+# The prose rules, vendored from the create-readme skill: a paragraph on one line, no full
+# stop closing one, plain quotation marks. It proves each of its own rules able to fail on
+# every run, so nothing here has to
+./check-prose.sh "${prose[@]}"
 
 echo "== the changelog obeys the versioning skill's rules"
 # Pinned: without -t a changelog moved wholesale to another template stays green, which is

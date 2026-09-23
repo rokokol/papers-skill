@@ -2,6 +2,12 @@
 
 Kept in the shape of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), dated rather than numbered, and with no `Unreleased` section — this repository is read at whatever revision you have checked out, so whatever is on the default branch is what every reader already has
 
+## 2026-09-23
+
+### Added
+
+- `check-prose.sh`, vendored from [create-readme](https://github.com/rokokol/create-readme-skill), and the gate runs it over every markdown this repository ships. Seven of its siblings already carried the copy and this one did not, so the house prose rules — a paragraph on one line, no full stop closing one, plain quotation marks — were decided nowhere here. The list is wider than the documents an agent loads: it covers the changelog and the workarounds, and `WORKAROUNDS.md` was outside every list the gate had
+
 ## 2026-09-15
 
 ### Changed
