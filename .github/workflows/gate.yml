@@ -1,0 +1,45 @@
+name: gate
+
+# The checks themselves, in one place, for every workflow that needs them: lint, the
+# vendored checkers, the documents tied to the packaged server, and the flake's own
+# checks. Nothing here talks to a mirror, a :latest image or a live site — the server
+# comes from the flake's package and the package's source is a hash-pinned fetch
+#
+# Called, never triggered. build.yml runs it on a push and on a pull request, macos.yml
+# runs it on the other platform the flake builds for, and both cascades run it against
+# the branch they just pushed. One badge per statement, so each of those is its own file,
+# and the steps below are what they all mean
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: the ref to check out, so a bot can verify a branch with these very checks
+        type: string
+        required: false
+        default: ""
+      runner:
+        description: the platform to run on; macos.yml passes macos-latest
+        type: string
+        required: false
+        default: ubuntu-latest
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: cachix/install-nix-action@v31
+      - name: the platform and the tools this job leans on
+        run: |
+          uname -a
+          nix --version
+      - name: check.sh (the gate, self-tested against planted defects)
+        run: nix develop --no-write-lock-file -c ./check.sh
+      - name: the package builds and the server starts
+        run: nix flake check --no-write-lock-file --print-build-logs

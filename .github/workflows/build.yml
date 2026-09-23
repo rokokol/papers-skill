@@ -1,0 +1,38 @@
+name: ci
+
+# The gate on every push and pull request. The checks live in gate.yml, so this file is
+# the trigger and the badge and nothing else; a cascade verifies a branch by calling this
+# workflow, which is the real one rather than a copy of its commands
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: the ref to check out, so a bot can verify a branch with this very workflow
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    uses: ./.github/workflows/gate.yml
+    with:
+      ref: ${{ inputs.ref }}
+
+  # The other platform the flake builds for, for a caller that hands this workflow a ref
+  # and nobody else. A cascade verifies a branch by calling build.yml, so without this job
+  # a bump that breaks the macOS build would land green. An ordinary push has no
+  # inputs.ref and skips it, because macos.yml runs on its own trigger there, which is
+  # where its badge comes from
+  macos:
+    if: inputs.ref != ''
+    uses: ./.github/workflows/gate.yml
+    with:
+      ref: ${{ inputs.ref }}
+      runner: macos-latest

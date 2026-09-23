@@ -4,6 +4,12 @@ Kept in the shape of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), d
 
 ## 2026-09-23
 
+### Changed
+
+- the workflows take the family's shape: `build.yml` is what a cascade calls, `macos.yml` is its own badge, and the checks both run live once in a new `gate.yml` that neither of them duplicates. `ci.yml` is gone, and the `ci` badge points at `build.yml` — the same rename every sibling already carries
+- `vendor-sync.yml` is vendored from the [ci](https://github.com/rokokol/ci-skill) skill like everywhere else. It could not be before: it needed a matrix over the runners, because `macos.yml` called `ci.yml` and `ci.yml` could not call it back. With the checks in `gate.yml` the recursion is gone, `build.yml` reaches macOS for a caller that hands it a ref, and the copy here is the template again
+- `bump-cascade.yml` verifies through `build.yml` rather than its own matrix, for the same reason
+
 ### Added
 
 - `check-prose.sh`, vendored from [create-readme](https://github.com/rokokol/create-readme-skill), and the gate runs it over every markdown this repository ships. Seven of its siblings already carried the copy and this one did not, so the house prose rules — a paragraph on one line, no full stop closing one, plain quotation marks — were decided nowhere here. The list is wider than the documents an agent loads: it covers the changelog and the workarounds, and `WORKAROUNDS.md` was outside every list the gate had

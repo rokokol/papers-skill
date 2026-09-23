@@ -1,8 +1,8 @@
 name: macos
 
-# The gate of ci.yml on the other platform the flake builds for, Nix on Apple silicon. The
-# checks live in ci.yml; this file exists so the README states "builds on macOS" with a
-# badge of its own
+# The gate on the other platform the flake builds for, Nix on Apple silicon. The checks
+# live in gate.yml; this file exists so the README states "builds on macOS" with a badge
+# of its own
 on:
   push:
     branches: [master]
@@ -14,6 +14,6 @@ permissions:
 
 jobs:
   check:
-    uses: ./.github/workflows/ci.yml
+    uses: ./.github/workflows/gate.yml
     with:
       runner: macos-latest

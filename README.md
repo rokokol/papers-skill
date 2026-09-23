@@ -10,7 +10,7 @@
 ![Bash](https://img.shields.io/badge/Bash-4EAA25?style=flat&logo=gnubash&logoColor=white)
 [![workarounds](https://img.shields.io/badge/docs-workarounds-555?style=flat)](WORKAROUNDS.md)
 [![license](https://img.shields.io/badge/MIT-3DA639?style=flat)](LICENSE)
-[![ci](https://github.com/rokokol/papers-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/rokokol/papers-skill/actions/workflows/ci.yml)
+[![ci](https://github.com/rokokol/papers-skill/actions/workflows/build.yml/badge.svg)](https://github.com/rokokol/papers-skill/actions/workflows/build.yml)
 [![macos](https://github.com/rokokol/papers-skill/actions/workflows/macos.yml/badge.svg)](https://github.com/rokokol/papers-skill/actions/workflows/macos.yml)
 
 </div>
