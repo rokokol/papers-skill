@@ -4,8 +4,8 @@
 # works: references/bump-cascade.md in https://github.com/rokokol/ci-skill
 vendor-sync.sh rokokol/ci-skill templates/vendor-sync.sh 50429c30159553c635ab0020c399d6cc9c17f705 176a58470c142a98cb6434a889b3e98fea266ad3
 check-pins.sh rokokol/ci-skill templates/check-pins.sh 50429c30159553c635ab0020c399d6cc9c17f705 c86f8288606d532f7982206eea8e8a310315d7f6
-check-changelog.sh rokokol/versioning-skill check-changelog.sh 09c77f196fe79f1fa20e517b567ded747caa6e29 143bc6f3f92a8e90ad2d66d3491cd03b21c08805
+check-changelog.sh rokokol/versioning-skill check-changelog.sh 166a31f0bdf08e02417d7a662b6647f7acb674da 103e3395a394fe6d39b8d7e0989107d9aa01c2e8
 check-interface.sh rokokol/ci-skill templates/check-interface.sh 50429c30159553c635ab0020c399d6cc9c17f705 abf757fe6a1a30ccd0669bb3f54a17d38a84da87
-check-skill.sh rokokol/skill-authoring-skill check-skill.sh 399d099461fbba8505d4750a582fab3f25bf83ce 3cb536abc18de6327b77ccf060826e793bf66280
+check-skill.sh rokokol/skill-authoring-skill check-skill.sh 4b5abb4c00ac030f6d8e3689f1ee2ed516b7e6b0 1e9b3cbe3e5733237de315943ceb72efd63375c6
 check-prose.sh rokokol/create-readme-skill check-prose.sh 68237ce51c5dca04fc2e2ef9df01ddcf1fdd4caa 3054ffa2de0990be2164494d734f34f17eda5e2b
 .github/workflows/vendor-sync.yml rokokol/ci-skill templates/github/workflows/vendor-sync.yml 0ef3c5fe157b249e70717f1535b3e9c2fc787a30 a5bde77f98d55a43b2c993f4c96a952e0b68010d manual

@@ -150,8 +150,9 @@ version_lt() { # version_lt A B -> 0 when A < B
   for i in 0 1 2; do
     x=${ia[$i]:-0}
     y=${ib[$i]:-0}
-    ((10#$x < 10#$y)) && return 0
-    ((10#$x > 10#$y)) && return 1
+    # The braces are what tree-sitter needs: it rejects a base prefix before a bare $name
+    ((10#${x} < 10#${y})) && return 0
+    ((10#${x} > 10#${y})) && return 1
   done
   # Equal cores: a release outranks every prerelease of itself. A's side is asked first —
   # asked the other way round, B being a release answered "not less" even when A was that
@@ -166,8 +167,8 @@ version_lt() { # version_lt A B -> 0 when A < B
     x=${ia[$i]}
     y=${ib[$i]}
     if [[ "$x" =~ ^[0-9]+$ && "$y" =~ ^[0-9]+$ ]]; then
-      ((10#$x < 10#$y)) && return 0
-      ((10#$x > 10#$y)) && return 1
+      ((10#${x} < 10#${y})) && return 0
+      ((10#${x} > 10#${y})) && return 1
     elif [[ "$x" =~ ^[0-9]+$ ]]; then
       return 0
     elif [[ "$y" =~ ^[0-9]+$ ]]; then
@@ -210,7 +211,7 @@ long_day() { # long_day "July 20th, 2026" -> iso=2026-07-20
     n=$((n + 1))
     [[ "${name:0:3}" == "${month:0:3}" ]] && break
   done
-  printf -v iso '%04d-%02d-%02d' "$((10#$year))" "$n" "$((10#$day))"
+  printf -v iso '%04d-%02d-%02d' "$((10#${year}))" "$n" "$((10#${day}))"
 }
 
 # Each placeholder's pattern, with the number of groups it opens, since ERE has no
