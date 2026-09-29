@@ -1,6 +1,6 @@
 # Workarounds
 
-Things in this repository that exist only because something upstream is broken or missing. Each entry says what to run to find out whether it is still needed, and what makes it removable. Deliberate choices live in the module or reference they belong to, not on this list
+Things in this repository that exist only because something upstream is broken or missing. Each entry says what to run to find out whether it is still needed, and what makes it removable. A permanent choice that differs from the obvious route belongs in a `DEVIATIONS.md`, not on this list
 
 Rules for this file: one entry per workaround, and every entry carries a mechanical removal check, a command whose output decides it, never a date
 
@@ -8,15 +8,11 @@ Rules for this file: one entry per workaround, and every entry carries a mechani
 
 ## Semantic Scholar failures patched into `paper-search-mcp`
 
-**Where:** `nix/package.nix`, `patches`: a `fetchpatch` of the commit behind [openags/paper-search-mcp#115](https://github.com/openags/paper-search-mcp/pull/115), limited to `paper_search_mcp/`, so the tests it also touches, which the PyPI release does not ship, stay out
+**Where:** `nix/package.nix`, `patches`: a `fetchpatch` of the commit behind [openags/paper-search-mcp#115](https://github.com/openags/paper-search-mcp/pull/115), limited to `paper_search_mcp/`, so the tests it also touches, which the PyPI release does not ship, stay out. The install without Nix in the README takes the PyPI release as it is, so it answers zero for a refusal until a release carries the fix
 
 **Symptom it prevents:** `search_papers` with `semantic` among its sources answers `"semantic": 0` and an empty `errors` map when Semantic Scholar refused the request (rate limited after every retry, an HTTP error, a network error), which is the same answer as a query that matched nothing. The anonymous pool is throttled at busy hours, so without the patch a zero from `semantic` says nothing. With it, the refusal lands in `errors["semantic"]`, and `search_semantic` fails as a tool call instead of returning an empty list
 
-**Not covered:** the install without Nix in the README takes the PyPI release as it is, so it answers zero for a refusal until a release carries the fix
-
 **Why it happens:** `SemanticSearcher.request_api()` does tell the failures apart, and `search()` logs the failure and returns `[]`; `search_papers` records a source's error only when its searcher raises
-
-**Reported:** [openags/paper-search-mcp#115](https://github.com/openags/paper-search-mcp/pull/115), merged
 
 **Removal check:**
 
@@ -32,3 +28,5 @@ curl -s "https://pypi.org/pypi/paper-search-mcp/$v/json" \
   | xargs curl -sL \
   | python3 -c 'import sys, tarfile; t = tarfile.open(fileobj=sys.stdin.buffer, mode="r|gz"); c = [t.extractfile(m).read().count(b"SemanticScholarRequestError") for m in t if m.name.endswith("/academic_platforms/semantic.py")]; sys.exit("no academic_platforms/semantic.py in the sdist") if not c else print(sum(c))'
 ```
+
+**Upstream:** [openags/paper-search-mcp#115](https://github.com/openags/paper-search-mcp/pull/115), merged
