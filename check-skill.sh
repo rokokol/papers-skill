@@ -241,12 +241,39 @@ fi
 
 # ---- links, and what they reach --------------------------------------------------------
 
+# fenced() -> 2 on a fence line, 1 inside a fenced block, 0 outside. Every awk program
+# here that must skip code starts with this text, so all of them agree on one rule. A
+# fence can stand inside a block quote at any depth. Only a fence of the same character,
+# at least as long, at the same depth and with no info string closes it. A line of
+# smaller depth ends the quote, so it ends the open block too
+# shellcheck disable=SC2016 # the backticks are markdown fences inside an awk program
+fence_awk='
+  function fenced(   s, d, c, len, rest) {
+    s = $0; d = 0
+    while (match(s, /^[ \t]*>/)) { d++; s = substr(s, RLENGTH + 1) }
+    if (fence_open && d < fence_depth) fence_open = 0
+    sub(/^[ \t]*/, "", s)
+    c = substr(s, 1, 1); len = 0
+    if (c == "`" || c == "~") { match(s, "^" c "+"); len = RLENGTH }
+    rest = substr(s, len + 1)
+    if (fence_open) {
+      if (d == fence_depth && c == fence_char && len >= fence_len && rest ~ /^[ \t]*$/) {
+        fence_open = 0
+        return 2
+      }
+      return 1
+    }
+    if (len < 3) return 0
+    fence_open = 1; fence_char = c; fence_len = len; fence_depth = d
+    return 2
+  }
+'
+
 # links_in DOC [numbered] -> one link target per line; code fences and spans are not links.
 # Numbered, each line is "LINE<TAB>target"
 links_in() {
-  awk -v q="'" -v numbered="${2:-}" '
-    /^[ \t]*(```|~~~)/ { fence = !fence; next }
-    fence { next }
+  awk -v q="'" -v numbered="${2:-}" "$fence_awk"'
+    fenced() { next }
     {
       line = $0
       gsub(/`[^`]*`/, "", line)
@@ -265,7 +292,7 @@ links_in() {
 resolve() {
   local doc="$1" target="$2" path
   case "$target" in
-    [a-z]*://* | mailto:* | //*) return 0 ;;
+    [[:alpha:]]*://* | mailto:* | //*) return 0 ;;
     /*) path=".$target" ;;
     *) path="$(dirname -- "$doc")/$target" ;;
   esac
@@ -281,10 +308,9 @@ resolve() {
 unicode_punct=$(printf '\342\200\224 \342\200\223 \302\253 \302\273 \342\200\234 \342\200\235 \342\200\230 \342\200\231 \342\200\246')
 
 anchors_of() { # anchors_of FILE -> one GitHub-style anchor per heading, duplicates suffixed
-  awk -v punct="$unicode_punct" '
+  awk -v punct="$unicode_punct" "$fence_awk"'
     BEGIN { n = split(punct, drop, " ") }
-    /^[ \t]*(```|~~~)/ { fence = !fence; next }
-    fence { next }
+    fenced() { next }
     /^##?#?#?#?#?([ \t]|$)/ {
       h = $0; sub(/^#+[ \t]*/, "", h); sub(/[ \t]+#+[ \t]*$/, "", h)
       for (i = 1; i <= n; i++) gsub(drop[i], "", h)
@@ -427,11 +453,11 @@ warn() { # warn FILE LINE ID WHAT
 # 2, fenced blocks kept only when FENCES is 1. A phrase inside backticks is mentioned, not
 # used, and a phrase inside a link is somebody else's title
 lines_of() {
-  awk -v spans="$2" -v fences="$3" '
+  awk -v spans="$2" -v fences="$3" "$fence_awk"'
     NR == 1 && /^---$/ { front = 1; next }
     front { if (/^---$/) front = 0; next }
-    /^[ \t]*(```|~~~)/ { fence = !fence; next }
-    fence && !fences { next }
+    { fence = fenced() }
+    fence == 2 || (fence && !fences) { next }
     {
       line = $0
       if (spans) gsub(/`[^`]*`/, "", line)
@@ -478,7 +504,7 @@ why() { # why ID -> what the warning of that id tells the reader
 # lines only when it says so; lowercased when it says so; and matches RE but not UNLESS.
 # The regexes are awk string literals, so a literal dot is [.] rather than an escape
 # shellcheck disable=SC2016 # the backticks are markdown code spans inside an awk program
-prose_rules='
+prose_rules="$fence_awk"'
   function r(i, s, f, l, e, u) { n++; id[n] = i; sp[n] = s; fe[n] = f; lo[n] = l; re[n] = e; un[n] = u }
   BEGIN {
     r("layout-section", 0, 0, 0, "^#+[ \t]+Layout[ \t]*$", "")
@@ -495,7 +521,8 @@ prose_rules='
   }
   NR == 1 && /^---$/ { front = 1; next }
   front { if (/^---$/) front = 0; next }
-  /^[ \t]*(```|~~~)/ { fence = !fence; next }
+  { fence = fenced() }
+  fence == 2 { next }
   {
     s0 = $0
     s1 = s0; gsub(/`[^`]*`/, "", s1)
@@ -532,7 +559,7 @@ for doc in "${runtime[@]}"; do
         [[ "$repo" == *-skill && "$repo" != "$name-skill" && "$repo" != "$name" ]] || continue
         warn "$doc" "$n" cross-skill-link "links to $repo; runtime never routes to a sibling skill"
         ;;
-      [a-z]*://* | mailto:* | //*) ;;
+      [[:alpha:]]*://* | mailto:* | //*) ;;
       *)
         # Only a climb can leave the repository, and resolving costs a subshell per link, so
         # a target with no .. in it is taken as inside without asking
@@ -583,8 +610,9 @@ if [[ -f README.md ]]; then
   while IFS=$'\t' read -r n dest; do
     warn README.md "$n" install-elsewhere \
       "clones into $dest, outside a skills directory, where only a symlink makes it readable"
-  done < <(awk '
-    /^[ \t]*(```|~~~)/ { fence = !fence; next }
+  done < <(awk "$fence_awk"'
+    { fence = fenced() }
+    fence == 2 { next }
     !fence && /^#+[ \t]/ {
       # A heading that opens on the word, so "Install the skill" counts and "Installing
       # the dependencies" does not: the second word is what tells them apart
@@ -745,6 +773,33 @@ c=$(copy fenced)
 printf '\n```\n[not a link](references/not-there.md)\n```\n' >>"$c/SKILL.md"
 nested "$c" "${nargs[@]+"${nargs[@]}"}" >/dev/null 2>&1 ||
   fail "a link inside a code fence was treated as a link"
+
+# A fence inside a block quote is code at every depth. Only a closer that fenced() accepts
+# ends a block, and each wrong closer below must leave the link hidden
+c=$(copy fenced-quote)
+# shellcheck disable=SC2016 # the backticks are markdown fences, not command substitution
+printf '\n> ```markdown\n> [not a link](references/not-there.md)\n> ```\n\n> > ```\n> > [not a link](references/not-there.md)\n> > ```\n\n````markdown\n```\n[not a link](references/not-there.md)\n````\n' >>"$c/SKILL.md"
+# One block per wrong closer, so a closer taken wrongly cannot open the next block and
+# hide the link of the block it fails
+# shellcheck disable=SC2016 # the backticks are markdown fences, not command substitution
+for closer in '~~~' '> ```' '```sh'; do
+  printf '\n```\n%s\n[not a link](references/not-there.md)\n```\n' "$closer" >>"$c/SKILL.md"
+done
+nested "$c" "${nargs[@]+"${nargs[@]}"}" >/dev/null 2>&1 ||
+  fail "a link inside a quoted fence, or behind a fence that does not close it, was treated as a link"
+c=$(copy quote-dead-link)
+# shellcheck disable=SC2016 # the backticks are markdown fences, not command substitution
+printf '\n> ```\n> code\n> ```\n> [gone](references/nothing-here.md)\n' >>"$c/SKILL.md"
+expect_red "$c" "does not exist" "a dead link in a quote after a quoted fence" "${nargs[@]+"${nargs[@]}"}"
+c=$(copy quote-ends-fence)
+# shellcheck disable=SC2016 # the backticks are markdown fences, not command substitution
+printf '\n> ```\n> code\n\n[gone](references/nothing-here.md)\n' >>"$c/SKILL.md"
+expect_red "$c" "does not exist" "a dead link after a quote that ends its open fence" "${nargs[@]+"${nargs[@]}"}"
+c=$(copy idiom-quoted-fence)
+p=$(plant "$c" '> ```
+> You MUST always run the gate
+> ```')
+expect_quiet "$c" "$p:2: prompt-idiom" "an idiom inside a quoted fence"
 
 c=$(copy no-frontmatter)
 printf 'no frontmatter here\n' >"$c/SKILL.md"
