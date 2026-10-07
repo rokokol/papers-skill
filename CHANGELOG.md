@@ -2,6 +2,17 @@
 
 Kept in the shape of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), dated rather than numbered, and with no `Unreleased` section — this repository is read at whatever revision you have checked out, so whatever is on the default branch is what every reader already has
 
+## 2026-10-08
+
+### Added
+
+- `tools/pmc_text.py` saves the open-access full text of a biomedical paper from PMC: the plain text of the latest version from PMC's open-access dataset on AWS, or the Europe PMC full-text XML. It takes a PMCID, a PMID or a DOI, and it is the reading subagent's first rung for a biomedical paper, given as the new `PMC_ID` and `PMC_TEXT` placeholders
+
+### Fixed
+
+- `references/sources.md` no longer says that `read_pubmed_paper` fetches the PMC full text. It returns a note that PubMed has no text, so a biomedical paper was digested from its abstract or not at all
+- the reading subagent rejects a file from `download_with_fallback` that does not start with `%PDF-`. The server saves the answer to any URL ending in `.pdf`, so a bot check could arrive as the paper
+
 ## 2026-09-23
 
 ### Changed

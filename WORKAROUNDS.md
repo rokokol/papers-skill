@@ -30,3 +30,24 @@ curl -s "https://pypi.org/pypi/paper-search-mcp/$v/json" \
 ```
 
 **Upstream:** [openags/paper-search-mcp#115](https://github.com/openags/paper-search-mcp/pull/115), merged
+
+---
+
+## PMC full text read by `tools/pmc_text.py`, not by the server
+
+**Where:** `tools/pmc_text.py` and `tests/test_pmc_text.py`; the first rung of the ladder and the `PMC_ID` and `PMC_TEXT` placeholders in `references/reader.md`; the PMC paragraph of "Full text" in `references/sources.md`; the reading subagent's bullet in `SKILL.md`
+
+**Symptom it prevents:** a biomedical paper with an open-access copy in PMC is digested from its abstract, or not at all. `read_pubmed_paper` returns a fixed note that PubMed has no text. The server's `pmc` and `europepmc` downloads ask `https://www.ncbi.nlm.nih.gov/pmc/articles/<PMCID>/pdf/` and Europe PMC's `?pdf=render` link, and both answer with HTML: a bot check with status 200, and a 403
+
+**Why it happens:** `PubMedSearcher.read_paper()` returns its message without a request. PMC's article pages are for a browser, and PMC publishes its open-access articles for programs as a separate dataset on AWS, `pmc-oa-opendata`, which the server does not use
+
+**Removal check:**
+
+```sh
+# prints a byte count far above the 207 of the note once the server reads PubMed through
+# PMC: then drop tools/pmc_text.py, its test and its gate step, the ladder's first rung
+# and its placeholders, and this entry. PMID 32015507 is an open-access article in PMC
+nix develop -c paper-search read pubmed 32015507 -o "$(mktemp -d)" 2>/dev/null | wc -c
+```
+
+**Upstream:** none filed yet

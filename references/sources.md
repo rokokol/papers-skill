@@ -25,21 +25,23 @@ The `read` mode needs a source and a `paper_id` in that source's form. Resolve b
 |---|---|---|
 | `2212.04356`, `2212.04356v3`, an arxiv.org URL | `arxiv` | the id without the `arXiv:` prefix; a version suffix is allowed |
 | `10.xxxx/...`, a doi.org URL | `crossref`, then `semantic` | the DOI; `get_crossref_paper_by_doi` gives the record, `read_crossref_paper` or `read_semantic_paper` the text |
-| a PMID (digits), a pubmed.ncbi.nlm.nih.gov URL | `pubmed` | the PMID; `read_pubmed_paper` fetches the PMC full text when there is one |
-| a PMC id (`PMC1234567`), a Europe PMC URL | `pubmed` | the PMID of the same article, found with `search_pubmed` on the PMC id; `pmc` and `europepmc` are search-only in the server, they have no `read_` tool |
+| a PMID (digits), a pubmed.ncbi.nlm.nih.gov URL | `pubmed` | the PMID, which is also the reader's `PMC_ID`; the text comes from PMC, see [Full text](#full-text) |
+| a PMC id (`PMC1234567`), a Europe PMC URL | `pubmed` | the PMID of the same article, found with `search_pubmed` on the PMC id; the PMC id itself is the reader's `PMC_ID`. `pmc` and `europepmc` are search-only in the server, they have no `read_` tool |
 | a bioRxiv or medRxiv DOI (`10.1101/...`) | `biorxiv` or `medrxiv` | the DOI |
 | a Semantic Scholar id (40 hex characters) or URL | `semantic` | the id |
 | a title from a shortlist | the source that listed it | the `paper_id` from that result |
 | a title with no identifier | `search_papers` first | never guess an id from a title |
 
-A paper reachable by several identifiers is read once, through the source most likely to hold its full text: arXiv for anything with an arXiv id, PubMed for anything biomedical, since its read tool pulls the PMC copy when one exists, Crossref plus Unpaywall for the rest. Not every source that can be searched can be read: the server has `read_<source>_paper` for arxiv, pubmed, biorxiv, medrxiv, semantic, crossref, openalex, dblp and the open repositories, and none for pmc, europepmc, core or google_scholar
+A paper reachable by several identifiers is read once, through the source most likely to hold its full text: arXiv for anything with an arXiv id, PMC for anything biomedical, Crossref plus Unpaywall for the rest. Not every source that can be searched can be read: the server has `read_<source>_paper` for arxiv, pubmed, biorxiv, medrxiv, semantic, crossref, openalex, dblp and the open repositories, and none for pmc, europepmc, core or google_scholar
 
 ## Full text
+
+A biomedical paper is read from PMC first, through `tools/pmc_text.py` beside this skill: the server cannot do it. `read_pubmed_paper` returns a note that PubMed has no text, and the server's PMC and Europe PMC downloads ask the article pages of PMC and Europe PMC for the PDF, which answer with HTML: a bot check or a 403. The script asks Europe PMC for the article's PMCID, then saves the plain text of its latest version from [PMC's open-access dataset](https://pmc.ncbi.nlm.nih.gov/tools/pmcaws/), or the Europe PMC full-text XML when that dataset has none. It takes a PMCID, a PMID or a DOI, and the reader gets the most direct of them as `PMC_ID`. An article outside PMC's open-access sets has no text there, and the script says so
 
 `read_<source>_paper(paper_id, save_path)` downloads and extracts the text in one call and returns it as the tool result, which is why only the reading subagent calls it. When it fails or returns a stub:
 
 1. `download_with_fallback(source, paper_id, doi, title, save_path)` tries the source, open repositories, Unpaywall, and then Sci-Hub when `use_scihub` is left on; pass the DOI and the title so the fallbacks have something to match. The Sci-Hub step is upstream's default and a choice for the owner of the installation, not for this skill; set `use_scihub: false` when the user says so
-2. The PDF at `save_path` is read with the harness's file-reading capability, in the subagent
+2. The file at `save_path` is a PDF only when it starts with `%PDF-`. The server saves the answer to any URL ending in `.pdf`, so a publisher's bot check can arrive as a `.pdf` holding HTML. The subagent reads a real PDF with the harness's file-reading capability
 
 ## Keys and limits
 
@@ -60,5 +62,5 @@ The services' own rules still apply behind the server: arXiv asks for one reques
 - **arXiv hangs on multi-word queries without quotes**: quote a phrase, or search Semantic Scholar first and read from arXiv by id
 - **Google Scholar is a scraper** with a low session limit before it blocks; it is never the first source and never the only one
 - **`download_with_fallback` reaches Sci-Hub by default**; say so when reporting where a PDF came from. That rung may be unavailable or blocked by a captcha, while the open-repository rung matches on `title`, so pass the title rather than an empty string
-- **A `read_*` result can be an abstract**: PubMed without PMC access, Crossref for a paywalled journal, SSRN. The digest's last field exists to say so
+- **A `read_*` result can be an abstract or less**: Crossref for a paywalled journal, SSRN, and `read_pubmed_paper` always, which returns a note rather than the abstract. The digest's last field exists to say so
 - **The default `save_path` is `./downloads`**, relative to the process's working directory; always pass one

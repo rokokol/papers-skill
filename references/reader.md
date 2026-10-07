@@ -14,15 +14,16 @@ Digest template, read it first and follow its fields and bounds exactly: TEMPLAT
 Language of the digest: LANGUAGE
 
 Obtain the text with the ladder below. Stop at the first rung that yields the full text; a rung that errors or returns only an abstract hands over to the next.
-1. Discover the exact callable name corresponding to read_SOURCE_paper in the harness's tool catalog, then call it with paper_id PAPER_ID and save_path SAVE_PATH
-2. If that did not yield full text, discover and call download_with_fallback with source SOURCE, paper_id PAPER_ID, save_path SAVE_PATH, use_scihub USE_SCIHUB, and doi and title when they are given below and are not "unknown"; then open the saved PDF with the harness's file-reading capability
-3. Only when no paper-search tools are available: run `paper-search read SOURCE PAPER_ID -o SAVE_PATH` through the shell and read its output
+1. If PMC_ID is not "none": run `python3 PMC_TEXT -o SAVE_PATH PMC_ID` through the shell. Exit 0 prints the path of the paper's full text from PMC: open that file with the harness's file-reading capability. Exit 1 says why PMC has none
+2. Discover the exact callable name corresponding to read_SOURCE_paper in the harness's tool catalog, then call it with paper_id PAPER_ID and save_path SAVE_PATH
+3. If that did not yield full text, discover and call download_with_fallback with source SOURCE, paper_id PAPER_ID, save_path SAVE_PATH, use_scihub USE_SCIHUB, and doi and title when they are given below and are not "unknown". Check that the saved file starts with the bytes %PDF- (`head -c 5 FILE`): a file that does not is a web page, often a bot check, and the rung yielded nothing. Open a real PDF with the harness's file-reading capability
+4. Only when no paper-search tools are available: run `paper-search read SOURCE PAPER_ID -o SAVE_PATH` through the shell and read its output
 If a rung yielded only the abstract and the rest yielded nothing, write the digest from the abstract and say so in the last field. If every rung errored and no text at all was obtained, return only one line, "could not read PAPER_ID: <the last error>", and nothing else.
 DOI: DOI
 Title: TITLE
 
 Rules:
-- Use only the paper-search tools and the file-reading capability on the file they saved. General web fetch, search and browser tools are off limits: a digest built from an abstract page is indistinguishable in shape from one built from the paper
+- Use only the paper-search tools, the PMC script in the ladder, and the file-reading capability on the files they saved. General web fetch, search and browser tools are off limits: a digest built from an abstract page is indistinguishable in shape from one built from the paper
 - Return the digest and nothing else: no raw text, no outline, no quotation longer than one sentence
 - Every number in the digest comes from the paper; when the paper gives none, say "no numbers reported" rather than estimating
 - Distinguish what the paper claims from what it shows; a result on one benchmark is not a general claim
@@ -37,6 +38,8 @@ Rules:
 | `IDENTIFIER` | what the user wrote, verbatim |
 | `SOURCE` | the server's lowercase source name from the identifier table in [sources.md](sources.md#identifiers): `arxiv`, `pubmed`, `biorxiv`, `medrxiv`, `semantic`, `crossref`, `openalex`, `dblp`; never the user's spelling, since `read_arXiv_paper` is not a tool |
 | `PAPER_ID` | the id in that source's form, from the same table |
+| `PMC_ID` | for a biomedical paper, its PMCID, else its PMID, else its DOI, as [sources.md](sources.md#full-text) explains; `none` for any other paper |
+| `PMC_TEXT` | the absolute path of `tools/pmc_text.py` in this skill's directory |
 | `DOI`, `TITLE` | when known from a shortlist or a Crossref lookup; write `unknown` otherwise, and the subagent leaves the arguments out |
 | `USE_SCIHUB` | `false` when the user has said so, `true` otherwise, which is upstream's default |
 | `QUESTION` | the user's question in their words; "summarise it" is a valid question |

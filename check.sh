@@ -50,6 +50,10 @@ shellcheck "${scripts[@]}"
 shfmt -d -i 2 -ci "${scripts[@]}"
 python3 -m py_compile tests/mcp-tools.py tools/*.py
 
+echo "== the PMC reader picks the text it should, and says so when there is none"
+# Against canned answers, so the gate never waits on Europe PMC or the bucket
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_*.py'
+
 echo "== the Nix this repository holds is formatted"
 # A `formatter` output nothing runs is a declaration, not a rule. nixfmt rather than
 # `nix fmt`, because the second needs the flake and this is the binary the wrapper calls.

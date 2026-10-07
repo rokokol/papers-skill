@@ -161,7 +161,7 @@ nix develop -c ./check.sh
 nix flake check
 ```
 
-`check.sh` is the gate CI runs: the scripts lint, the workflows are valid and pinned, the vendored checkers still match their lock, `SKILL.md` loads and every reference and link resolves, the changelog obeys its rules, every MCP tool and argument the documents name is one the packaged server advertises, and every source they route to is one its CLI lists. The vendored checkers and the document checks are each proven able to fail on a planted defect during the same run; the linters are trusted to fail. `nix flake check` builds the packages and asks each one for its help, offline
+`check.sh` is the gate CI runs: the scripts lint, the PMC reader passes its unit tests, the workflows are valid and pinned, the vendored checkers still match their lock, `SKILL.md` loads and every reference and link resolves, the changelog obeys its rules, every MCP tool and argument the documents name is one the packaged server advertises, and every source they route to is one its CLI lists. The vendored checkers and the document checks are each proven able to fail on a planted defect during the same run; the linters are trusted to fail. `nix flake check` builds the packages and asks each one for its help, offline
 
 ## Layout
 
@@ -171,7 +171,9 @@ references/           sources by area, the reader prompt, the digest template, t
 nix/                  package.nix for paper-search-mcp, paperqa/ with PaperQA2's lock, home-module.nix for Home Manager
 flake.nix             packages, the module, the overlay, the dev shell and the checks
 tools/evidence.py     pqa-evidence: PaperQA2's retrieval without its answer model
+tools/pmc_text.py     the reader's first rung for a biomedical paper: PMC's open-access text
 tests/mcp-tools.py    asks a stdio MCP server what tools it has and what arguments each takes
+tests/test_*.py       unit tests the gate runs, with no request leaving the machine
 check.sh              the gate, self-tested against planted defects
 check-*.sh            vendored checkers, kept byte-equal to their source by vendor-sync.sh
 WORKAROUNDS.md        what exists only because something upstream is broken, and how to tell when it can go

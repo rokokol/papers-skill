@@ -34,14 +34,14 @@ Say which mode you are in. A request usually chains them: `search` â†’ `read` â†
 One paper, one subagent, one digest. The contract is what makes the mode cheap, so it is not softened:
 
 - The subagent gets the identifier, the user's question, the save path, the path of the digest template, and the rules in [references/reader.md](references/reader.md); it reads the template itself
-- It calls `read_<source>_paper` first; when that fails it calls `download_with_fallback` and reads the PDF with the harness's file-reading capability; when the CLI is the only path it runs `paper-search read <source> <id> -o <save_path>`
+- For a biomedical paper it runs `tools/pmc_text.py` first, which saves PMC's open-access text; otherwise, or when PMC has none, it calls `read_<source>_paper`; when that fails it calls `download_with_fallback` and reads the file only if it is a real PDF; when the CLI is the only path it runs `paper-search read <source> <id> -o <save_path>`
 - It returns the digest and nothing else: no raw text, no quotes longer than a sentence, no table of contents. The one exception is a single sentence naming what it could not read
 - It states, in the digest's last field, what it actually read: full text, or abstract only, or a truncated extraction
 - It never spawns subagents, never writes outside the save path, never touches the vault
 
 ## Never
 
-- Read a PDF, call `read_*_paper`, `download_*`, or `paper-search read` in the master; that is the whole point of the reading subagent
+- Read a PDF, call `read_*_paper`, `download_*`, `paper-search read` or `tools/pmc_text.py` in the master; that is the whole point of the reading subagent
 - Paste abstracts or full search results into the conversation; a shortlist is identifiers plus one line each
 - Put an API key into a prompt, a command line, or a note
 - Present a digest as the paper's claim without saying what the subagent actually read, or turn a failure line into a digest from memory
