@@ -50,4 +50,4 @@ curl -s "https://pypi.org/pypi/paper-search-mcp/$v/json" \
 nix develop -c paper-search read pubmed 32015507 -o "$(mktemp -d)" 2>/dev/null | wc -c
 ```
 
-**Upstream:** none filed yet
+**Upstream:** [openags/paper-search-mcp#151](https://github.com/openags/paper-search-mcp/pull/151), open: the server reads PubMed, PMC and Europe PMC through the same dataset
