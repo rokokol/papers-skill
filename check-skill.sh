@@ -72,6 +72,8 @@ The warnings, by the id each line carries:
                      review happens when the user asks, not on the skill's say-so
   unverified-source  a fetch-failure note beside a claim
   trigger-duplicate  a trigger listed twice in the description
+  plain-truncated    an unquoted frontmatter value that a strict YAML loader cuts short:
+                     a # after a space, or a # or & first
   readme-badge       the readme's badge row does not open with the Agent Skill badge
   harness-badge      the readme carries a harness badge, claiming a dependency
   install-elsewhere  the readme's Install section clones the skill outside a skills
@@ -197,6 +199,26 @@ name=$(front_value name)
 desc_chars=$(($(front_value description | LC_ALL=C tr -d '\200-\277' | wc -c) - 1))
 ((desc_chars <= 1024)) ||
   fail "the description is $desc_chars characters long, over the 1024 an agent will load"
+
+# A lenient loader reads an unquoted value to the end of its line, and a strict one, such
+# as PyYAML or npx skills, refuses the whole frontmatter. A colon before a space or at the
+# end of a line opens a nested mapping, on the first line and on a continuation line alike,
+# and a value cannot open on a flow, alias, tag or reserved indicator, or on "- ", "? " or
+# ": ". Each shape was measured against PyYAML. Quoted and block values are another syntax,
+# and the lines under a key with no value are a nested mapping, so neither is read
+# shellcheck disable=SC2016 # the backtick is the reserved indicator, not a command substitution
+plain_bad=$(awk -v ind='[]{},*!%@`' '
+  /^[^ \t#]/ {
+    key = $0; sub(/:.*/, "", key)
+    v = $0; sub(/^[^:]*:[ \t]*/, "", v)
+    plain = v != "" && v !~ /^["\047|>]/
+    if (plain && (index(ind, substr(v, 1, 1)) || v ~ /^[-?:]([ \t]|$)/ || v ~ /:([ \t]|$)/)) { print key; exit }
+    next
+  }
+  plain && /:([ \t]|$)/ { print key; exit }
+' <<<"$front")
+[[ -z "$plain_bad" ]] ||
+  fail "SKILL.md's frontmatter: the unquoted $plain_bad value holds what a strict YAML loader reads as syntax — quote it"
 
 # ---- the readme's install section ------------------------------------------------------
 # Every channel ends in the reader's own skills directory, and the plugin block appears
@@ -587,6 +609,23 @@ if [[ "$triggers" != "$desc" ]]; then
     LC_ALL=C tr '[:upper:]' '[:lower:]' | grep -v '^$' | LC_ALL=C sort | LC_ALL=C uniq -d)
 fi
 
+# An unquoted value that a strict YAML loader reads without failing, only shorter: a # after
+# a space opens a comment, on the first line and on a continuation line alike, a leading #
+# leaves the value empty, and a leading & names an anchor that takes the first word. The
+# skill still loads, without the triggers that came after. The frontmatter opens on line 2
+while IFS=$'\t' read -r tline tkey; do
+  warn SKILL.md "$tline" plain-truncated "a strict YAML loader cuts the unquoted $tkey value short here — quote it"
+done < <(awk '
+  /^[^ \t#]/ {
+    key = $0; sub(/:.*/, "", key)
+    v = $0; sub(/^[^:]*:[ \t]*/, "", v)
+    plain = v != "" && v !~ /^["\047|>]/
+    if (plain && (v ~ /^[#&]/ || v ~ /[ \t]#/)) print NR + 1 "\t" key
+    next
+  }
+  plain && /^[ \t]+([#]|.*[ \t]#)/ { print NR + 1 "\t" key }
+' <<<"$front")
+
 # The readme's badge row says what the skill depends on. It opens with the Agent Skill
 # badge, since the format is the open standard every harness reads, and a harness badge
 # beside it claims a dependency the skill does not have
@@ -824,6 +863,28 @@ c=$(copy long-description)
 sed "s/^description:.*/description: $(printf '%1100s' '' | tr ' ' x)/" SKILL.md >"$c/SKILL.md"
 expect_red "$c" "characters long" "an oversized description" "${nargs[@]+"${nargs[@]}"}"
 
+# An unquoted value that a strict YAML loader rejects: a colon and a space on the first
+# line, the same on a continuation line, and an indicator that opens the value
+c=$(copy plain-colon)
+sed 's/^description:.*/description: What it is. Use when needed. Triggers: alpha, beta/' SKILL.md >"$c/SKILL.md"
+expect_red "$c" "strict YAML loader" "an unquoted description holding a colon and a space" "${nargs[@]+"${nargs[@]}"}"
+c=$(copy plain-colon-continued)
+sed 's/^description:.*/description: What it is. Use when needed.\
+  Triggers: alpha, beta/' SKILL.md >"$c/SKILL.md"
+expect_red "$c" "strict YAML loader" "a colon and a space on an unquoted continuation line" "${nargs[@]+"${nargs[@]}"}"
+c=$(copy plain-indicator)
+sed 's/^description:.*/description: [draft] What it is. Use when needed/' SKILL.md >"$c/SKILL.md"
+expect_red "$c" "strict YAML loader" "an unquoted description opening on an indicator" "${nargs[@]+"${nargs[@]}"}"
+# What a strict loader accepts stays quiet: a colon with no space after it, a quoted
+# value holding one, and a nested mapping, whose colons are keys rather than text
+c=$(copy plain-quiet)
+sed 's|^description:.*|description: What it is, as https://example.org/a:b names it. Use when needed\
+compatibility: "Needs: bash 3.2"\
+metadata:\
+  author: someone|' SKILL.md >"$c/SKILL.md"
+nested "$c" "${nargs[@]+"${nargs[@]}"}" >/dev/null 2>&1 ||
+  fail "a colon with no space after it, or a nested mapping, was read as a value a strict YAML loader rejects"
+
 c=$(copy orphan)
 mkdir -p "$c/references"
 printf '# nothing points here\n' >"$c/references/nothing-points-here.md"
@@ -974,6 +1035,23 @@ c=$(copy trigger-twice-excused)
 sed 's/^description:.*/description: "What it is. Use when needed. Triggers: alpha, beta, Alpha."/' SKILL.md >"$c/SKILL.md"
 excuse "$c" 'trigger-duplicate SKILL.md'
 expect_quiet "$c" "SKILL.md:$n: trigger-duplicate" "an excused duplicate trigger"
+
+# An unquoted value a strict loader shortens without failing: a comment after a space, the
+# same on a continuation line, and an anchor in front. A # with no space before it is text
+c=$(copy plain-comment)
+sed 's/^description:.*/description: What it is. Use when needed #alpha, beta/' SKILL.md >"$c/SKILL.md"
+n=$(grep -n '^description:' "$c/SKILL.md" | sed -n '1s/:.*//p')
+expect_warn "$c" "SKILL.md:$n: plain-truncated" "an unquoted description with a comment in it"
+c=$(copy plain-comment-continued)
+sed 's/^description:.*/description: What it is. Use when needed\
+  #alpha, beta/' SKILL.md >"$c/SKILL.md"
+expect_warn "$c" "SKILL.md:$((n + 1)): plain-truncated" "a comment opening an unquoted continuation line"
+c=$(copy plain-anchor)
+sed 's/^description:.*/description: \&what it is. Use when needed/' SKILL.md >"$c/SKILL.md"
+expect_warn "$c" "SKILL.md:$n: plain-truncated" "an unquoted description opening on an anchor"
+c=$(copy plain-hash-quiet)
+sed 's/^description:.*/description: What it is, in C# and F#. Use when needed/' SKILL.md >"$c/SKILL.md"
+expect_quiet "$c" "SKILL.md:$n: plain-truncated" "a # with no space before it"
 
 c=$(copy badge-order)
 printf '# a skill\n\n![Bash](https://img.shields.io/badge/Bash-4EAA25?style=flat)\n[![Agent Skill](https://img.shields.io/badge/Agent_Skill-6E56CF?style=flat)](https://agentskills.io)\n' >"$c/README.md"
