@@ -2,6 +2,12 @@
 
 Kept in the shape of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), dated rather than numbered, and with no `Unreleased` section — this repository is read at whatever revision you have checked out, so whatever is on the default branch is what every reader already has
 
+## 2026-10-19
+
+### Added
+
+- the Home Manager module puts the server in Home Manager's shared MCP list, `programs.mcp.servers.paper-search`, with `envFile` passed to it. Every agent with an MCP integration takes it from there, so a Home Manager user no longer runs `claude mcp add`. A Home Manager without that list is left as before
+
 ## 2026-10-08
 
 ### Added

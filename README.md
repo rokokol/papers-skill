@@ -101,7 +101,18 @@ uv tool install --with "mcp<2" paper-search-mcp==0.1.4
 
 ## Register the server
 
-Claude Code starts a stdio MCP server per session and stops it on exit; nothing is hosted. With the binary on `PATH`:
+Claude Code starts a stdio MCP server per session and stops it on exit; nothing is hosted
+
+**With the Home Manager module**, the server is already in Home Manager's shared MCP list as `paper-search`, with `envFile` passed to it. An agent reads that list once its integration is on:
+
+```nix
+{
+  programs.mcp.enable = true;
+  programs.claude-code.enableMcpIntegration = true;
+}
+```
+
+**By hand**, with the binary on `PATH`:
 
 ```sh
 claude mcp add --scope user --transport stdio paper-search -- paper-search-mcp

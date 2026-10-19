@@ -2,6 +2,7 @@
 {
   config,
   lib,
+  options,
   pkgs,
   ...
 }:
@@ -214,6 +215,17 @@ in
     ];
     home.sessionVariables = lib.mkIf (cfg.envFile != null) {
       PAPER_SEARCH_MCP_ENV_FILE = cfg.envFile;
+    };
+    # Home Manager's shared MCP list, which every agent with an MCP integration reads. An agent
+    # starts the server without a login shell, so the env file is named here as well. A Home
+    # Manager without the list gets nothing, and the server is registered by hand there
+    programs = lib.optionalAttrs (options.programs ? mcp) {
+      mcp.servers.paper-search = lib.mkIf cfg.enable {
+        command = lib.getExe' cfg.package "paper-search-mcp";
+        env = lib.optionalAttrs (cfg.envFile != null) {
+          PAPER_SEARCH_MCP_ENV_FILE = cfg.envFile;
+        };
+      };
     };
     # pqa -s NAME reads .pqa/settings/NAME.json under PQA_HOME, a HOME-like root, and under
     # HOME when PQA_HOME is unset, which is where this writes it
