@@ -72,6 +72,8 @@ The warnings, by the id each line carries:
                      review happens when the user asks, not on the skill's say-so
   unverified-source  a fetch-failure note beside a claim
   trigger-duplicate  a trigger listed twice in the description
+  missing-license    no license key in the frontmatter: optional in the Agent Skills
+                     specification, so a warning, excused with `missing-license SKILL.md`
   plain-truncated    an unquoted frontmatter value that a strict YAML loader cuts short:
                      a # after a space, or a # or & first
   readme-badge       the readme's badge row does not open with the Agent Skill badge
@@ -183,7 +185,7 @@ front_value() { # front_value KEY -> the scalar, quotes stripped, a block scalar
     }' <<<"$front"
 }
 
-for key in name description license; do
+for key in name description; do
   # <<< rather than a pipe: `grep -q` closes the pipe at its match and the producer's next
   # write dies of SIGPIPE, which pipefail makes the status of a pipeline that succeeded
   grep -q "^$key:" <<<"$front" ||
@@ -594,6 +596,11 @@ for doc in "${runtime[@]}"; do
   done < <(links_in "$doc" numbered)
 done
 
+# The license is optional in the Agent Skills specification and no loader needs it, so its
+# absence is a warning for a repository that wants to state one, excused where it does not
+grep -q '^license:' <<<"$front" ||
+  warn SKILL.md 1 missing-license "the frontmatter has no license — optional in the Agent Skills specification"
+
 # The triggers are matched by meaning, so the same phrase twice only costs every request
 desc=$(front_value description)
 triggers="${desc##*Triggers:}"
@@ -850,7 +857,11 @@ expect_red "$c" "never closed" "an unclosed frontmatter" "${nargs[@]+"${nargs[@]
 
 c=$(copy no-license)
 grep -v '^license:' SKILL.md >"$c/SKILL.md"
-expect_red "$c" "has no license" "no license key" "${nargs[@]+"${nargs[@]}"}"
+expect_warn "$c" "SKILL.md:1: missing-license" "no license key"
+c=$(copy no-license-excused)
+grep -v '^license:' SKILL.md >"$c/SKILL.md"
+excuse "$c" 'missing-license SKILL.md'
+expect_quiet "$c" "SKILL.md:1: missing-license" "no license key, excused"
 
 c=$(copy bad-name)
 sed 's/^name:.*/name: Not_Valid/' SKILL.md >"$c/SKILL.md"

@@ -6,6 +6,6 @@ vendor-sync.sh rokokol/ci-skill templates/vendor-sync.sh 00b049fe781ae8986345963
 check-pins.sh rokokol/ci-skill templates/check-pins.sh 50429c30159553c635ab0020c399d6cc9c17f705 c86f8288606d532f7982206eea8e8a310315d7f6
 check-changelog.sh rokokol/versioning-skill check-changelog.sh 166a31f0bdf08e02417d7a662b6647f7acb674da 103e3395a394fe6d39b8d7e0989107d9aa01c2e8
 check-interface.sh rokokol/ci-skill templates/check-interface.sh 50429c30159553c635ab0020c399d6cc9c17f705 abf757fe6a1a30ccd0669bb3f54a17d38a84da87
-check-skill.sh rokokol/skill-authoring-skill check-skill.sh 9930ec1e3e153584351ae6e42e74f59fe3bd64b4 cf071f3eb7e5641a20ff1e44fd7acc05440bc44c
+check-skill.sh rokokol/skill-authoring-skill check-skill.sh 9f431bc8c3f5cbcba09363827c4ca81aec847b21 5d4d4103f7e936fa21736c4d6d14c3fb297e9995
 check-prose.sh rokokol/create-readme-skill check-prose.sh c912b7aa9584a16d57eb1d58d698d7fb1121669c 0438eca6ca155baf2b5fbbd8157747ec3619b579
 .github/workflows/vendor-sync.yml rokokol/ci-skill templates/github/workflows/vendor-sync.yml 0ef3c5fe157b249e70717f1535b3e9c2fc787a30 a5bde77f98d55a43b2c993f4c96a952e0b68010d manual
