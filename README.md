@@ -44,6 +44,8 @@ Claude Code also takes it as a plugin:
 /plugin install papers@rokokol-skills
 ```
 
+With the Home Manager module below, `programs.papers.skill` is the skill's directory at the flake's revision, for a module that hands skills to your agents. The skill then always matches the server the same flake builds
+
 or by hand — clone into whichever skills directory your agent reads:
 
 ```bash

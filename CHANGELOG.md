@@ -2,6 +2,12 @@
 
 Kept in the shape of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), dated rather than numbered, and with no `Unreleased` section — this repository is read at whatever revision you have checked out, so whatever is on the default branch is what every reader already has
 
+## 2026-10-20
+
+### Added
+
+- the Home Manager module exports the skill's directory as `programs.papers.skill`: `SKILL.md`, `references/` and `tools/` at the flake's revision. A module that hands skills to agents takes it from there, and the skill then matches the server the same flake builds
+
 ## 2026-10-19
 
 ### Added

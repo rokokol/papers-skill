@@ -88,6 +88,31 @@ in
       description = "The paper-search-mcp package to install";
     };
 
+    skill = lib.mkOption {
+      type = lib.types.path;
+      readOnly = true;
+      # What an agent loads, at the revision of this flake, so the skill names only the tools
+      # the packaged server has. Tests, checks and the Nix code stay out
+      default = builtins.path {
+        name = "papers-skill";
+        path = self;
+        filter =
+          path: _:
+          let
+            relative = lib.removePrefix "${toString self}/" (toString path);
+          in
+          relative == "SKILL.md"
+          ||
+            lib.any (dir: relative == dir || lib.hasPrefix "${dir}/" relative) [
+              "references"
+              "tools"
+            ]
+            && !(lib.hasInfix "__pycache__" relative);
+      };
+      defaultText = lib.literalMD "`SKILL.md`, `references/` and `tools/` of this flake";
+      description = "The skill's directory, for a module that hands skills to agents";
+    };
+
     envFile = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
