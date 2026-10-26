@@ -5,11 +5,10 @@
   fetchpatch,
 }:
 
-# paper-search-mcp from its PyPI release, built against nixpkgs' mcp 1.x. Upstream leaves
-# the mcp dependency unbounded and imports the 1.x FastMCP module, so a resolver that picks
-# mcp 2.x breaks the server at import time; nixpkgs pins the SDK, so the pin is the lock,
-# not a constraint file. The fastmcp requirement is dropped: nothing in the package imports
-# it, only the metadata names it
+# The server imports the SDK 1 FastMCP module, which SDK 2 removes
+let
+  mcp = python3Packages.mcp_1 or python3Packages.mcp;
+in
 python3Packages.buildPythonApplication rec {
   pname = "paper-search-mcp";
   version = "0.1.4";
@@ -32,6 +31,7 @@ python3Packages.buildPythonApplication rec {
 
   build-system = [ python3Packages.hatchling ];
 
+  # The server imports FastMCP from the SDK, not from the separate fastmcp distribution
   pythonRemoveDeps = [ "fastmcp" ];
 
   dependencies =
